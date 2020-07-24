@@ -24,7 +24,7 @@ class Player:
             self.registered = True
             self.password_hash = password_hash
         _player_ids.add(self.id)
-        
+
     # TODO add Database
     def _get_new_id(self): # здесь и далее хочу рандомные id
         """Return new Player.id"""
@@ -46,22 +46,26 @@ class Game:
         self.players = []
         self.result = dict()
         self.settings = {
-            'win_score': 40, 
+            'win_score': 40,
             'move_time': 60, # in seconds
             'rule_set' : 'i' # only 'i' for now
         }
-        self._state = -1 # current player
+        self._state = -1
         self._hands = dict()
         self._current_association = ''
         _game_ids.add(self.id)
-    
+
     def add_player(self, player_id):
         """Can be called before and in the game
-        If game has already started 
+        If game has already started
         deals 6 cards to new player.
         """
         self.players.append(player_id)
-        self.result[player_id] = 0
+        if player_id in self.result:
+            # deal with 'dnf *number*' 
+            self.result[player_id] = int(self.result[player_id].split()[1])
+        else:
+            self.result[player_id] = 0
         if self._state != -1:
             self._deal6(player_id)
 
@@ -69,11 +73,17 @@ class Game:
         """Removes player from game setting score as DNF"""
         self.players.remove(player_id)
         if self._state != -1:
+            self._state %= len(self.players)
+            self._current_player = self.players[self._state]
             self._cards += self._hands[player_id]
             self._hands[player_id] = []
+            self.result[player_id] = 'DNF 4' # if player returns later, their score = 0
+        else:
+            # removes from results as the game has not started
+            self.result.pop(player_id)
 
     def start_game(self):
-        """Shuffles players, generates card list, 
+        """Shuffles players, generates card list,
         deals 6 cards to each player.
         """
         self._state = 0
@@ -81,6 +91,7 @@ class Game:
         self._shuffle_players()
         for p in self.players:
             self._deal6(p)
+        self._current_player = self.players[self._state]
 
     def start_turn(self, association, card):
         """Sets association, removes card from active player.
@@ -88,7 +99,7 @@ class Game:
         card: Card.id
         """
         self._current_association = association
-        self._current_player = self.players[self._state]
+        self._lead_card = card
         self._hands[self._current_player].remove(card)
         self._current_table = {card: self._current_player}
 
@@ -96,7 +107,7 @@ class Game:
         """Removes cards from players and adds them to the current table.
         bets: {Player.id: Card.id}
         """
-        for p, c in bets:
+        for p, c in bets.items():
             self._hands[p].remove(c)
             self._current_table[c] = p
 
@@ -105,33 +116,40 @@ class Game:
         guesses: {Player.id: Card.id}
         """
         if self.settings['rule_set'] == 'i':
-            lead_card = self._current_table[self._current_player]
-
             # everyone guessed leader
-            if all(lead_card == g_v for g_v in guesses.values()): 
+            if all(self._lead_card == g_v for g_v in guesses.values()):
                 self.result[self._current_player] -= 3
+                self.result[self._current_player] = max(
+                    0, self.result[self._current_player]
+                )
                 return
 
-            if all(lead_card != g_v for g_v in guesses.values()):
+            if all(self._lead_card != g_v for g_v in guesses.values()):
                 # no one guessed leader
                 self.result[self._current_player] -= 2
-            else: 
+                self.result[self._current_player] = max(
+                    0, self.result[self._current_player]
+                )
+            else:
                 self.result[self._current_player] += 3
-                for p, c in guesses:
-                    if c == lead_card:
+                for p, c in guesses.items():
+                    if c == self._lead_card:
                         self.result[p] += 3
                         self.result[self._current_player] += 1
-            
-            for p, c in guesses:
-                if c == lead_card:
+
+            for p, c in guesses.items():
+                if c == self._lead_card:
                     continue
                 card_owner = self._current_table[c]
                 if card_owner in self.players:
                     self.result[card_owner] += 1
-    
+
     def end_turn(self):
+        """Ends turn changing game.state, clearing internal variables
+        and dealing cards.
+        """
         self._state = (self._state + 1) % len(self.players)
-        
+
         # clear table
         for c in self._current_table.keys():
             self._cards.append(c)
@@ -140,18 +158,38 @@ class Game:
         for p in self.players:
             while len(self._hands[p]) < 6:
                 self._deal1(p)
+        self._current_player = self.players[self._state]
 
-            
+    def end_game(self):
+        self._state = -2
 
-    def _fix_packs(self): 
-        """Fixes packs choice. 
+    def get_state(self):
+        """returns 0 if game has ended,
+        1 if game has not started
+        2 if game is active
+
+        game.get_state() is False only if it is incative.
+        """
+        if self._state == -2:
+            return 0
+        elif self._state == -1:
+            return 1
+        else:
+            return 2
+
+
+    def get_hand(self, target):
+        return self._hands[target]
+
+    def _fix_packs(self):
+        """Fixes packs choice.
         Transforms packs to cards and shuffles them.
         """
         self._cards = _packs_to_cards(self.packs)
         shuffle(self._cards)
 
     def _shuffle_players(self):
-        """Shuffles players order. 
+        """Shuffles players order.
         New players are appended to the end
         """
         shuffle(self.players)
@@ -160,12 +198,10 @@ class Game:
         """Deals 1 card to target, removes this card from available."""
         self._hands[target].append(self._cards.pop(0))
 
-    def _deal6(self, target): 
+    def _deal6(self, target):
         """Deals 6 cards to target, removes these cards from available."""
         self._hands[target] = self._cards[:6]
         self._cards = self._cards[6:]
-
-    
 
     # TODO add Database
     def _get_new_id(self):
@@ -205,19 +241,20 @@ class Pack:
         self.name = name
         self.description = description
         _pack_ids.add(self.id)
-    
+
     # TODO add Database
-    def _get_new_id(self): 
+    def _get_new_id(self):
         """Return new Pack.id"""
         potential = randint(100000, 999999)
         while potential in _pack_ids:
             potential = randint(100000, 999999)
         return potential
 
-def _packs_to_cards(packs): # опа базы данных пошли
+def _packs_to_cards(packs): # TODO add Database
     return []
 
 _player_ids = set()
 _game_ids = set()
 _card_ids = set()
 _pack_ids = set()
+
