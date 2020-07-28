@@ -4,7 +4,6 @@ class TicTacToe:
     """id: Game.id
     PlayerX: Player.id
     PlayerO: Player.id
-    winner: Player.id
     move_order: string {'X', 'O'}
     table: matrix 3x3
     """
@@ -14,7 +13,6 @@ class TicTacToe:
         self.id = self.__get_new_id()
         self.PlayerX = None
         self.PlayerO = None
-        self.winner = None
         self.move_order = 'X'
         self.table = [['', '', ''],
                       ['', '', ''],
@@ -40,6 +38,14 @@ class TicTacToe:
             else:
                 self.PlayerO = player_id
 
+    def leave_player(self, player_id):
+        if self.PlayerX == player_id:
+            self.PlayerX = None
+            return 'Player X left'
+        if self.PlayerO == player_id:
+            self.PlayerO = None
+            return 'Player O left'
+
     def move(self, num_button, player_id):
         if not 0 <= num_button <= 8:
             raise Exception('(ಥ﹏ಥ)')
@@ -52,22 +58,34 @@ class TicTacToe:
             raise Exception('(-_-)')
         self.table[row][col] = elem
         self.move_order = 'O' if self.move_order == 'X' else 'X'
-        return self.__check_win(player_id)
+        return self.__check_win(elem)
 
-    def __check_win(self, player_id):
+    def __check_win(self, elem):
         for row in range(3):
             if self.table[row][0] == self.table[row][1] == self.table[row][2] != '':
-                self.winner = player_id
-                return True
+                self.new_game()
+                return f'win {elem}'
         for col in range(3):
             if self.table[0][col] == self.table[1][col] == self.table[2][col] != '':
-                self.winner = player_id
-                return True
+                self.new_game()
+                return f'win {elem}'
         for col in [[0, 1, 2], [2, 1, 0]]:
             if self.table[0][col[0]] == self.table[1][col[1]] == self.table[2][col[2]] != '':
-                self.winner = player_id
-                return True
-        return False
+                self.new_game()
+                return f'win {elem}'
+        for row in self.table:
+            for value in row:
+                if value == '':
+                    return ''
+        self.new_game()
+        return 'draw'
+
+    def new_game(self):
+        self.move_order = 'X'
+        self.table = [['', '', ''],
+                      ['', '', ''],
+                      ['', '', '']]
+        return True
 
     @staticmethod
     def get_all_ids():
