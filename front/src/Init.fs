@@ -1,5 +1,6 @@
 module Init
 
 open Elmish
+open Model
 
-let initModel () = Unchecked.defaultof<Model.Model>, Cmd.none
+let initModel () = ModelState.Lobby, Cmd.none

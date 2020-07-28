@@ -1,22 +1,32 @@
 module Model
 
 [<RequireQualifiedAccess>]
-type PlayerSide = Cross | Nought
+type PlayerSide =
+    | Cross
+    | Nought
 
 [<RequireQualifiedAccess>]
-type GameCell = Empty | Cross | Nought
+type GameCell =
+    | Empty
+    | Cross
+    | Nought
 
 [<RequireQualifiedAccess>]
-type GameProgress = Waiting | CrossTurn | NoughtTurn | CrossWin | NoughtWin
+type GameProgress =
+    | Waiting
+    | CrossTurn
+    | NoughtTurn
+    | CrossWin
+    | NoughtWin
+    | Draw
 
-type GameState = {
-    Progress: GameProgress
-    Field: GameCell list    // Exactly 9 elements
-    Side: PlayerSide
-}
+type GameState =
+    { Progress: GameProgress
+      Field: GameCell list // Exactly 9 elements
+      Side: PlayerSide }
 
 [<RequireQualifiedAccess>]
-type ModelState = 
+type ModelState =
     | Lobby
     | Connecting
     | Error of errorText: string
@@ -35,10 +45,6 @@ type ServerMessage =
     | RoomUpdate of newState: GameState
 
 [<RequireQualifiedAccess>]
-type InternalMessage =
-    | PseudoUpdate of updater: (GameState -> GameState)
-
-type Msg = 
+type Msg =
     | UserMsg of UserMessage
     | ServerMsg of ServerMessage
-    | InternalMsg of InternalMessage
