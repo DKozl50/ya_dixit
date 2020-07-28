@@ -6,3 +6,6 @@ back/.idea/misc.xml
 back/.idea/inspectionProfiles/profiles_settings.xml
 back/.idea/back.iml
 back/__pycache__/mechanics.cpython-38.pyc
+back/tic_tac_toe/__pycache__/Game.cpython-38.pyc
+back/tic_tac_toe/__pycache__/main.cpython-38.pyc
+back/tic_tac_toe/__pycache__/Player.cpython-38.pyc

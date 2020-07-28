@@ -1,26 +1,28 @@
-import tic_tac_toe.Player as Player
-import tic_tac_toe.Game as Game
+from tic_tac_toe.Player import *
+from tic_tac_toe.Game import *
 
 gameid_to_game = {}
 playerid_to_player = {}
 
 def main():
-    player = Player()
-    playerid_to_player[player.id] = player
     while True:
         request, *args = input().split()
+        args = list(map(int, args))
         if request == 'create_game':
             #  args = {player.id}
-            game = Game.TicTacToe()
+            game = TicTacToe()
             gameid_to_game[game.id] = game
             player = playerid_to_player[args[0]]
             player.join_game(game)
-        if request == 'join_game':
+            print(game.id)
+            print(game.PlayerX)
+        elif request == 'join_game':
             #  args = {player.id, game.id}
             player = playerid_to_player[args[0]]
             game = gameid_to_game[args[1]]
             player.join_game(game)
-        if request == 'leave_game':
+            print('opa123')
+        elif request == 'leave_game':
             #  args = {player.id}
             player = playerid_to_player[args[0]]
             if player.state is None:
@@ -32,12 +34,20 @@ def main():
                     gameid_to_game.pop(game.id)
                 else:
                     game.new_game()
-        if request == 'move':
+            print('opa')
+        elif request == 'move':
             #  args = {player.id, button}
             player = playerid_to_player[args[0]]
             game = gameid_to_game[player.state]
             if game.PlayerX is not None and game.PlayerO is not None:
-                game.move(int(args[1]), player.id)
+                print(game.move(args[1], player.id))
+                print('opaxxxx')
+            else:
+                print('(((')
+        elif request == 'new_player':
+            player = Player()
+            playerid_to_player[player.id] = player
+            print(player.id)
         else:
             print('⊙_ರೃ')
 

@@ -27,7 +27,7 @@ class Player:
     @staticmethod
     def __get_new_id():
         potential = randint(100000, 999999)
-        while potential in Player.__game_ids:
+        while potential in Player.__player_ids:
             potential = randint(100000, 999999)
-        Player.__game_ids.append(potential)
+        Player.__player_ids.append(potential)
         return potential
