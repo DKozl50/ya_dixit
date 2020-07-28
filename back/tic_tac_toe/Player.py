@@ -1,20 +1,24 @@
-from random import randint
-import tic_tac_toe.main as main
+from uuid import uuid1
+
 
 class Player:
-    """id: Player.id
-    state: {Game.id, None}
+    """id: player.id
+    state: {game.id, None}
     """
-    __player_ids = []
+    __player_ids = {}
 
     def __init__(self):
-        self.id = self.__get_new_id()
+        self.__get_new_id()
         self.state = None
+
+    def __get_new_id(self):
+        self.id = uuid1().time_low
+        Player.__player_ids[self.id] = self
 
     def join_game(self, game):
         if self.state is not None:
             return False
-        if game.PlayerX is not None and game.PlayerO is not None:
+        if game.is_ready():
             return False
         self.state = game.id
         game.add_player(self.id)
@@ -22,12 +26,12 @@ class Player:
 
     def leave_game(self, game):
         self.state = None
-        return game.leave_player(self.id)
+        game.try_leave_player(self.id)
 
     @staticmethod
-    def __get_new_id():
-        potential = randint(100000, 999999)
-        while potential in Player.__player_ids:
-            potential = randint(100000, 999999)
-        Player.__player_ids.append(potential)
-        return potential
+    def get_player(id):
+        return Player.__player_ids.get(id, None)
+
+    @staticmethod
+    def get_all_players():
+        return Player.__player_ids.values()
