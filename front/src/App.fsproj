@@ -4,7 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Model.fs" />
-    <Compile Include="Json.fs" />
     <Compile Include="Socket.fs" />
     <Compile Include="Init.fs" />
     <Compile Include="Update.fs" />

@@ -7,32 +7,36 @@ type PlayerSide = Cross | Nought
 type GameCell = Empty | Cross | Nought
 
 [<RequireQualifiedAccess>]
-type GameState = Waiting | CrossTurn | NoughtTurn | CrossWin | NoughtWin
+type GameProgress = Waiting | CrossTurn | NoughtTurn | CrossWin | NoughtWin
 
-type Game = {
-    State: GameState
-    Field: GameCell list
+type GameState = {
+    Progress: GameProgress
+    Field: GameCell list    // Exactly 9 elements
     Side: PlayerSide
 }
 
-type Model = 
+[<RequireQualifiedAccess>]
+type ModelState = 
     | Lobby
     | Connecting
     | Error of errorText: string
-    | Room of id: string * game: Game
+    | Room of id: string * state: GameState
 
+[<RequireQualifiedAccess>]
 type UserMessage =
     | CreateRoom
     | JoinRoom of id: string
     | LeaveRoom
     | MakeMove of cell: int
 
+[<RequireQualifiedAccess>]
 type ServerMessage =
-    | RoomConnect of id: string * game: Game
-    | RoomUpdate of game: Game
+    | RoomConnect of id: string * state: GameState
+    | RoomUpdate of newState: GameState
 
+[<RequireQualifiedAccess>]
 type InternalMessage =
-    | PseudoUpdate of game: Game
+    | PseudoUpdate of updater: (GameState -> GameState)
 
 type Msg = 
     | UserMsg of UserMessage
