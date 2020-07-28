@@ -51,6 +51,7 @@ class TicTacToe:
         if self.table[row][col] != '':
             raise Exception('(-_-)')
         self.table[row][col] = elem
+        self.move_order = 'O' if self.move_order == 'X' else 'X'
         return self.__check_win(player_id)
 
     def __check_win(self, player_id):
