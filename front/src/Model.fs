@@ -29,7 +29,6 @@ type GameState =
 type ModelState =
     | Lobby
     | Connecting
-    | Error of errorText: string
     | Room of id: string * state: GameState
 
 [<RequireQualifiedAccess>]
@@ -41,6 +40,7 @@ type UserMessage =
 
 [<RequireQualifiedAccess>]
 type ServerMessage =
+    | FailConnect
     | RoomConnect of id: string * state: GameState
     | RoomUpdate of newState: GameState
 

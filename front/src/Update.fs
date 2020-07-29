@@ -45,6 +45,7 @@ let serverUpdate (msg: ServerMessage) (state: ModelState) =
     match msg with
     | ServerMessage.RoomConnect (id, s) -> ModelState.Room(id, s), Cmd.none
     | ServerMessage.RoomUpdate ns -> updateGameState (konst ns) state, Cmd.none
+    | ServerMessage.FailConnect -> ModelState.Lobby, Cmd.none
 
 let update (msg: Msg) (state: ModelState) =
     match msg with

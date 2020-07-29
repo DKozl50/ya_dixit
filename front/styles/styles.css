@@ -1,0 +1,58 @@
+html, body, .fullheight {
+    min-height: 100% !important;
+    height: 100%;
+}
+
+body{
+    background-color: rgba(0,0,0,0.15);
+}
+
+.card {
+    border-radius: 8px;
+}
+
+.justify-content-around {
+    justify-content: space-around !important;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.justify-content-center {
+    justify-content: center;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 9em;
+    height: 9em;
+    margin: 0;
+    box-shadow: none;
+    border: rgba(0, 0, 0, 0.08) solid 1px;
+}
+
+.cell:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+
+.room-id-field {
+    user-select: none;
+    cursor: pointer;
+}
