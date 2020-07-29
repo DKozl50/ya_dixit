@@ -8,6 +8,12 @@ let cellOfSide =
     | PlayerSide.Cross -> GameCell.Cross
     | PlayerSide.Nought -> GameCell.Nought
 
+let switchTurn =
+    function
+    | GameProgress.CrossTurn -> GameProgress.NoughtTurn
+    | GameProgress.NoughtTurn -> GameProgress.CrossTurn
+    | x -> x
+
 let inline listUpdate (i: int) (x: 'T) (li: 'T list) =
     let a = List.toArray li
     a.[i] <- x
@@ -18,8 +24,9 @@ let inline konst x y = x
 let makeMove (x: int) (gs: GameState) =
     let field' =
         gs.Field |> listUpdate x (cellOfSide gs.Side)
-
-    { gs with Field = field' }
+    { gs with
+          Field = field'
+          Progress = switchTurn gs.Progress }
 
 let updateGameState (updater: GameState -> GameState) (state: ModelState) =
     match state with
