@@ -93,6 +93,11 @@ class TicTacToe:
                       ['', '', ''],
                       ['', '', '']]
 
+    def field_to_front(self):
+        mark_to_name = {'': 'Empty', 'X': 'Cross', 'O': 'Nought'}
+        res = [mark_to_name[elem] for row in self.table for elem in row]
+        return res
+
     @staticmethod
     def get_game(id):
         return TicTacToe.__game_ids.get(id, None)
