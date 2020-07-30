@@ -9,12 +9,8 @@ type private RefT = IRefValue<option<Browser.Types.HTMLInputElement>>
 
 let private sendJoinMessage dispatch =
     function
-    | "" ->
-        dispatch (Msg.UserMsg UserMessage.CreateRoom)
-        printfn "%A" ""
-    | id ->
-        dispatch (Msg.UserMsg(UserMessage.JoinRoom id))
-        printfn "%A" id
+    | "" -> dispatch (Msg.UserMsg UserMessage.CreateRoom)
+    | id -> dispatch (Msg.UserMsg(UserMessage.JoinRoom id))
 
 let private lobbyButtonControl (ref': RefT) dispatch =
     Bulma.button.button

@@ -24,6 +24,7 @@ let inline konst x y = x
 let makeMove (x: int) (gs: GameState) =
     let field' =
         gs.Field |> listUpdate x (cellOfSide gs.Side)
+
     { gs with
           Field = field'
           Progress = switchTurn gs.Progress }
@@ -34,19 +35,12 @@ let updateGameState (updater: GameState -> GameState) (state: ModelState) =
     | _ -> state
 
 let userUpdate (msg: UserMessage) (state: ModelState) =
+    Socket.sendObject msg
     match msg with
-    | UserMessage.CreateRoom ->
-        Socket.sendJson ""
-        ModelState.Connecting, Cmd.none
-    | UserMessage.JoinRoom id ->
-        Socket.sendJson ""
-        ModelState.Connecting, Cmd.none
-    | UserMessage.LeaveRoom ->
-        Socket.sendJson ""
-        ModelState.Lobby, Cmd.none
-    | UserMessage.MakeMove x ->
-        Socket.sendJson ""
-        updateGameState (makeMove x) state, Cmd.none
+    | UserMessage.CreateRoom -> ModelState.Connecting, Cmd.none
+    | UserMessage.JoinRoom id -> ModelState.Connecting, Cmd.none
+    | UserMessage.LeaveRoom -> ModelState.Lobby, Cmd.none
+    | UserMessage.MakeMove x -> updateGameState (makeMove x) state, Cmd.none
 
 let serverUpdate (msg: ServerMessage) (state: ModelState) =
     match msg with
