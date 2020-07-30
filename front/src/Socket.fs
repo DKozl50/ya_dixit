@@ -3,7 +3,7 @@ module Socket
 open Browser
 open Thoth.Json
 
-let socket = WebSocket.Create("wss://localhost")
+let socket = WebSocket.Create("ws://localhost:50")
 
 let sendJson (json: string) = socket.send(json)
 

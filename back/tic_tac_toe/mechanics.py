@@ -1,5 +1,6 @@
 from tic_tac_toe.Player import *
 from tic_tac_toe.Game import *
+from time import sleep
 
 
 def create_game(player_id):
@@ -11,6 +12,7 @@ def create_game(player_id):
 
 
 def join_game(player_id, game_id):
+    game_id = int(game_id)
     player = Player.get_player(player_id)
     game = TicTacToe.get_game(game_id)
     if player.join_game(game):
@@ -47,6 +49,7 @@ def move(player_id, button):
             print(f'{player_id} выиграл')
         elif status == 'draw':
             print(f'{player_id} сделал последний ход')
+        sleep(2)
         game.new_game()
     else:
         print(f'{player_id} сделал ход')
