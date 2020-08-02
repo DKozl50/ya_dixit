@@ -1,4 +1,6 @@
-from random import randint, shuffle
+from random import shuffle
+from uuid import uuid1
+
 
 class Player:
     """id: Player.id
@@ -10,8 +12,10 @@ class Player:
     game_archive: [Game.id]
     password_hash: hash
     """
+    __player_ids = {}
+
     def __init__(self, name, password_hash=None):
-        self.id = self._get_new_id()
+        self._get_new_id()
         self.name = name
         self.picture = None
         self.friends = []
@@ -23,15 +27,20 @@ class Player:
         else:
             self.registered = True
             self.password_hash = password_hash
-        _player_ids.add(self.id)
 
     # TODO add Database
-    def _get_new_id(self): # здесь и далее хочу рандомные id
-        """Return new Player.id"""
-        potential = randint(100000, 999999)
-        while potential in _player_ids:
-            potential = randint(100000, 999999)
-        return potential
+    def __get_new_id(self):
+        self.id = uuid1().time_low
+        Player.__player_ids[self.id] = self
+
+    @staticmethod
+    def get_player(id):
+        return Player.__player_ids.get(id, None)
+
+    @staticmethod
+    def get_all_players():
+        return Player.__player_ids.values()
+
 
 class Game:
     """id: Game.id
@@ -40,20 +49,21 @@ class Game:
     result: {Player.id: int}
     settings: dict
     """
+    __game_ids = {}
+
     def __init__(self):
-        self.id = self._get_new_id()
+        self._get_new_id()
         self.packs = set()
         self.players = []
         self.result = dict()
         self.settings = {
             'win_score': 40,
-            'move_time': 60, # in seconds
-            'rule_set' : 'i' # only 'i' for now
+            'move_time': 60,  # in seconds
+            'rule_set': 'i'  # only 'i' for now
         }
         self._state = -1
         self._hands = dict()
         self._current_association = ''
-        _game_ids.add(self.id)
 
     def add_player(self, player_id):
         """Can be called before and in the game
@@ -77,7 +87,7 @@ class Game:
             self._current_player = self.players[self._state]
             self._cards += self._hands[player_id]
             self._hands[player_id] = []
-            self.result[player_id] = 'DNF 4' # if player returns later, their score = 0
+            self.result[player_id] = 'DNF 4'  # if player returns later, their score = 0
         else:
             # removes from results as the game has not started
             self.result.pop(player_id)
@@ -177,7 +187,6 @@ class Game:
         else:
             return 2
 
-
     def get_hand(self, target):
         return self._hands[target]
 
@@ -204,12 +213,19 @@ class Game:
         self._cards = self._cards[6:]
 
     # TODO add Database
-    def _get_new_id(self):
-        """Return new Card.id"""
-        potential = randint(100000, 999999)
-        while potential in _card_ids:
-            potential = randint(100000, 999999)
-        return potential
+    def __get_new_id(self):
+        self.id = uuid1().time_low
+        Game.__game_ids[self.id] = self
+
+    @staticmethod
+    def get_game(id):
+        return Game.__game_ids.get(id, None)
+
+    @staticmethod
+    def delete_game(id):
+        Game.__game_ids.pop(id)
+
+
 # сюда наверное надо геты прикрутить для фронта
 
 class Card:
@@ -217,44 +233,36 @@ class Card:
     picture: link
     parent_id: Pack.id
     """
+    __card_ids = {}
+
     def __init__(self, picture, parent_id):
-        self.id = self._get_new_id()
+        self._get_new_id()
         self.picture = picture
         self.parent_id = parent_id
-        _card_ids.add(self.id)
 
     # TODO add Database
     def _get_new_id(self):
-        """Return new Card.id"""
-        potential = randint(100000, 999999)
-        while potential in _card_ids:
-            potential = randint(100000, 999999)
-        return potential
+        self.id = uuid1().time_low
+        Card.__card_ids[self.id] = self
+
 
 class Pack:
     """id: Pack.id
     name: string
     description: string
     """
+    __pack_ids = {}
+
     def __init__(self, name, description):
-        self.id = self._get_new_id()
+        self._get_new_id()
         self.name = name
         self.description = description
-        _pack_ids.add(self.id)
 
     # TODO add Database
     def _get_new_id(self):
-        """Return new Pack.id"""
-        potential = randint(100000, 999999)
-        while potential in _pack_ids:
-            potential = randint(100000, 999999)
-        return potential
+        self.id = uuid1().time_low
+        Pack.__pack_ids[self.id] = self
 
-def _packs_to_cards(packs): # TODO add Database
+
+def _packs_to_cards(packs):  # TODO add Database
     return []
-
-_player_ids = set()
-_game_ids = set()
-_card_ids = set()
-_pack_ids = set()
-
