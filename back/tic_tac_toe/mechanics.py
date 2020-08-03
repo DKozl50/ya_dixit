@@ -1,5 +1,5 @@
-from tic_tac_toe.Player import *
-from tic_tac_toe.Game import *
+from Player import *
+from Game import *
 from time import sleep
 
 
