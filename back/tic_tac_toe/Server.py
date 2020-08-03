@@ -15,17 +15,6 @@ USERS = {}
 WEB = {}
 
 
-def users_event():
-    return json.dumps({"type": "users", "count": len(USERS)})
-
-
-def notify_users():
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = users_event()
-        for user in USERS:
-            user.send(message)
-
-
 def register(websocket):
     player = Player()
     USERS[websocket] = player
