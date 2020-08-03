@@ -10,7 +10,7 @@ type Player =
     { Name: string
       Role: PlayerRole
       Score: int
-      MadeMove: bool }
+      MoveAvailable: bool }
 
 [<RequireQualifiedAccess>]
 type GamePhase =
@@ -40,8 +40,8 @@ type ModelState =
 
 [<RequireQualifiedAccess>]
 type UserMessage =
-    | CreateRoom
-    | JoinRoom of id: string
+    | CreateRoom of nickname: string
+    | JoinRoom of id: string * nickname: string
     | LeaveRoom
     | TellStory of cardID: int * story: string
     | DealCard of cardID: int

@@ -1,4 +1,5 @@
 public/bundle.js*
+public/img
 
 # Node
 node_modules/

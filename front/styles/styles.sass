@@ -1,0 +1,170 @@
+@charset "utf-8"
+
+html, body, .fullheight
+    min-height: 100% !important
+    height: 100%
+
+body
+    position: fixed
+    overflow: hidden
+    width: 100%
+
+.card
+    border-radius: 8px
+
+.circle-out
+    position: relative
+    width: 70px
+    height: 70px
+    border-radius: 50%
+    display: block
+    background: #ccc
+    overflow: hidden
+
+.circle-in
+    position: absolute
+    width: 64px
+    height: 64px
+    margin: 3px
+    border-radius: 50%
+    background: white
+    overflow: hidden
+
+.progress
+    height: 70px
+    width: 140px
+    background: lime
+    position: absolute
+    top: -70px
+    left: -35px
+    transform: rotate(90deg)
+    transform-origin: 70px 70px
+    border-radius: 0
+    transition: all 0.3s
+
+.top
+    width: 30em
+    position: absolute !important
+    top: -8px
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+
+.player-list
+    position: absolute !important
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    left: -8px
+
+.hand
+    position: absolute !important
+    bottom: -128px
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+
+.settings
+    position: absolute !important
+    bottom: -8px
+    right: -8px
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    width: 6em
+    height: 6em
+    transition: all 0.2s
+    &:hover
+        width: 30em
+        height: 20em
+        & .fa-cog
+            transform: rotate(60deg)
+
+    & .fa-cog
+        position: absolute
+        bottom: 0.5em
+        right: 0.5em
+        transition: all 0.2s
+
+.game-card
+    width: 9em
+    height: 12em
+    cursor: pointer
+    transition: all 0.2s
+    bottom: 0
+    position: relative
+
+    &:hover
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22)
+
+    & img
+        height: 100%
+        object-fit: cover
+
+.larger
+    transition: all 0.2s
+    width: auto
+    height: 30em
+    position: absolute !important
+    top: 15em
+
+.larger img
+    object-fit: contain
+
+.hand .game-card:hover, .chosen
+    transition: all 0.2s
+    bottom: 128px
+
+.chosen
+    border: 4px solid lime
+    box-shadow: 0 0 28px rgba(0, 255, 0, 0.7) !important
+
+.end-turn-btn
+    display: block
+    width: 10em
+    min-height: 3em
+    text-align: center
+    text-decoration: none
+    color: #333
+    font-weight: bold
+    font-size: 1.2em
+    background-color: #fbff00
+    border: none
+    margin: 0
+    border-radius: 8px
+    user-select: none
+    position: absolute
+    right: 3em
+    line-height: 3em
+    box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.5)
+    cursor: pointer
+    &:hover
+        background-color: #fbff00
+        box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.5)
+    &:active
+        background-color: #f1d900
+        box-shadow: 0 4px 0 0 #e2ba06, 0 4px 4px 0 rgba(0, 0, 0, 0.5)
+        margin: 4px 0 -4px 0
+
+.justify-content-around
+    justify-content: space-around !important
+
+.justify-content-between
+    justify-content: space-between !important
+
+.d-flex
+    display: flex
+
+.flex-column
+    flex-direction: column
+
+.justify-content-center
+    justify-content: center
+
+.align-items-center
+    align-items: center
+
+.flex-wrap
+    flex-wrap: wrap
+
+.room-id-field
+    user-select: none
+    cursor: pointer
+
+$body-background-color: #e2e1e0
+$input-border-color: transparent
+$input-background-color: #e8e6e3
+
+$card-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)
