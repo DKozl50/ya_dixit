@@ -19,14 +19,12 @@ def register(websocket):
     player = Player()
     USERS[websocket] = player
     WEB[player.id] = websocket
-    notify_users()
 
 
 def unregister(websocket):
     player = USERS[websocket]
     USERS.pop(websocket)
     WEB.pop(player.id)
-    notify_users()
 
 
 mask = {'X': 'Cross', 'O': 'Nought'}
