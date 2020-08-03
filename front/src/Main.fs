@@ -4,7 +4,6 @@ open Fable.Core.JsInterop
 
 importAll "../styles/css/bulma.css"
 importAll "../styles/styles.sass"
-importAll "../styles/main.scss"
 
 open Elmish
 open Elmish.React
