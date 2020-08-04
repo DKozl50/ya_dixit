@@ -15,7 +15,7 @@ class Player:
     __player_ids = {}
 
     def __init__(self, name, password_hash=None):
-        self._get_new_id()
+        self.__get_new_id()
         self.name = name
         self.picture = None
         self.friends = []
@@ -52,7 +52,7 @@ class Game:
     __game_ids = {}
 
     def __init__(self):
-        self._get_new_id()
+        self.__get_new_id()
         self.packs = set()
         self.players = []
         self.result = dict()
