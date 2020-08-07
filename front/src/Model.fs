@@ -4,7 +4,7 @@ module Model
 type PlayerRole =
     | Storyteller
     | Listener
-    | None
+    | Spectator
 
 type Player =
     { Name: string
@@ -21,16 +21,24 @@ type GamePhase =
     | Interlude
     | Victory of Player
 
-type Hand = { Cards: int list; SelectedCard: int }
+type CardID = string
+
+type CardOptionalInfo = { Owner: Player; Voters: Player list }
+
+type Hand =
+    { Cards: CardID list
+      SelectedCard: CardID option }
 
 type Table =
-    { Cards: (int * Player option) list
-      Story: string }
+    { Cards: (CardID * CardOptionalInfo option) list
+      Story: string option }
 
 type GameState =
-    { Players: Player list // the client player object is always on top
+    { Client: Player
+      Opponents: Player list
       Hand: Hand
-      Table: Table }
+      Table: Table
+      Phase: GamePhase }
 
 [<RequireQualifiedAccess>]
 type ModelState =
@@ -43,9 +51,9 @@ type UserMessage =
     | CreateRoom of nickname: string
     | JoinRoom of id: string * nickname: string
     | LeaveRoom
-    | TellStory of cardID: int * story: string
-    | DealCard of cardID: int
-    | GuessCard of cardID: int
+    | SelectCard of id: CardID
+    | TellStory of story: string
+    | EndTurn
 
 [<RequireQualifiedAccess>]
 type ServerMessage =

@@ -4,24 +4,29 @@ open Elmish
 open Model
 
 let private makeMove (state: GameState) =
-    let player =
-        { state.Players.Head with
-              MoveAvailable = false }
-
     { state with
-          Players = player :: state.Players.Tail }
+          Client =
+              { state.Client with
+                    MoveAvailable = false } }
+
+let private selectCard (id: CardID option) (state: GameState) =
+    { state with
+          Hand = { state.Hand with SelectedCard = id } }
 
 let private mapGameState (f: GameState -> GameState) (state: ModelState) =
     match state with
     | ModelState.Room (id, s) -> ModelState.Room(id, f s)
-    | _ -> state
+    | _ ->
+        Printf.eprintfn "Warning: incorrect message recieved"
+        state
 
 let private userUpdate (msg: UserMessage) (state: ModelState) =
     Socket.sendObject msg
     match msg with
-    | UserMessage.CreateRoom -> ModelState.Connecting, Cmd.none
-    | UserMessage.JoinRoom -> ModelState.Connecting, Cmd.none
+    | UserMessage.CreateRoom _ -> ModelState.Connecting, Cmd.none
+    | UserMessage.JoinRoom _ -> ModelState.Connecting, Cmd.none
     | UserMessage.LeaveRoom -> ModelState.Lobby, Cmd.none
+    | UserMessage.SelectCard id -> mapGameState (selectCard (Some id)) state, Cmd.none
     | _ -> mapGameState makeMove state, Cmd.none
 
 let private serverUpdate (msg: ServerMessage) (state: ModelState) =
