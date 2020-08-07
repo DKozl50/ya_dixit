@@ -94,6 +94,7 @@ class Game:
         deals 6 cards to new player.
         """
         self.players.append(player_id)
+        self._hands[player_id] = []
         if player_id in self.result:
             # deal with 'did_not_finish *number*'
             self.result[player_id] = int(self.result[player_id].split()[1])
