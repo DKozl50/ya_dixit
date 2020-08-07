@@ -1,4 +1,5 @@
-from server import*
+from server import *
+
 
 def main():
     while True:
@@ -14,17 +15,18 @@ def main():
                 JoinGame(*args)
             elif request == '3':
                 # args {web_socket}
-                PosholNahui(*args)
+                FailConnect(*args)
             elif request == '4':
                 pass
             elif request == '5':
                 player = Player()
-                USERS[ws] = player
-                WEB[player.id] = ws
-                lb.register(ws)
+                ws_to_player[ws] = player
+                id_to_ws[player.id] = ws
+                main_lobby.register(ws)
                 print(f'Создали нового игрока {player.id}')
         except Exception as error:
             print(error)
+
 
 if __name__ == '__main__':
     main()

@@ -1,5 +1,8 @@
 from random import shuffle
 from uuid import uuid1
+import logging
+
+logger = logging.getLogger('app.mechanics')
 
 
 class Player:
