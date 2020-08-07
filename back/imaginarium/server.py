@@ -1,12 +1,11 @@
-from mechanics import *
+from mechanics import Player, Game, Card, Pack
 from flask import Flask, redirect, url_for
 from flask_sockets import Sockets
-from uuid import uuid1
-import logging
+from gevent import pywsgi, spawn, sleep as gv_sleep
+from geventwebsocket.handler import WebSocketHandler
 import os
 import redis
-import gevent
-import json
+import logging
 
 app = Flask(__name__, static_folder='static')
 sockets = Sockets(app)
@@ -14,11 +13,12 @@ sockets = Sockets(app)
 
 class Lobby(object):
     """Interface for registering and updating WebSocket clients."""
+
     def __init__(self):
         self.games = list()
         self.clients = list()
         self.pubsub = redis.pubsub()
-        self.pubsub.subscribe(..)
+        self.pubsub.subscribe(REDIS_CHAN)
 
     def __iter_data(self):
         for message in self.pubsub.listen():
@@ -27,13 +27,13 @@ class Lobby(object):
                 app.logger.info(u'Sending message: {}'.format(data))
                 yield data
 
-    def add_game(game_id):
-        games.append(game_id)
+    def add_game(self, game_id):
+        self.games.append(game_id)
 
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
         self.clients.append(client)
-    
+
     def unregister(self, client):
         """Unregister a WebSocket connection"""
         self.clients.remove(client)
@@ -44,21 +44,22 @@ class Lobby(object):
         try:
             client.send(data)
         except Exception:
+            logger.info(f'Player {client} disconnect from lobby')
             self.unregister(client)
 
     def run(self):
         """Listens for new messages in Redis, and sends them to clients."""
         for data in self.__iter_data():
             for client in self.clients:
-                gevent.spawn(self.send, client, data)
+                spawn(self.send, client, data)
 
     def start(self):
         """Maintains Redis subscription in the background."""
-        gevent.spawn(self.run)
+        spawn(self.run)
 
 
 class GameBackend(object):
-    """Interface for registering and updating WebSocket clients."""
+    """Interface for game and updating WebSocket clients."""
 
     def __init__(self):
         self.game = Game()
@@ -76,7 +77,7 @@ class GameBackend(object):
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
         self.clients.append(client)
-    
+
     def unregister(self, client):
         """Unregister a WebSocket connection"""
         self.clients.remove(client)
@@ -87,42 +88,39 @@ class GameBackend(object):
         try:
             client.send(data)
         except Exception:
+            logger.info(f'Player {client} disconnect from game')
             self.unregister(client)
 
     def run(self):
         """Listens for new messages in Redis, and sends them to clients."""
         for data in self.__iter_data():
             for client in self.clients:
-                gevent.spawn(self.send, client, data)
+                spawn(self.send, client, data)
 
     def start(self):
         """Maintains Redis subscription in the background."""
-        gevent.spawn(self.run)
+        spawn(self.run)
 
-
-logging.basicConfig()
-
-lb = Lobby()
-USERS = {}
-WEB = {}
 
 def CreateGame(user):
-    lb.unregister(user)
-    player = USERS[user]
+    main_lobby.unregister(user)
+    player = ws_to_player[user]
     game = Game()
-    lb.add_game(game.id)
+    main_lobby.add_game(game.id)
     game.add_player(player.id)
+
 
 def JoinGame(user, game_id):
     try:
-        lb.unregister(user)
+        main_lobby.unregister(user)
         game = Game.get_game(game_id)
-    except Exception:
-        PosholNahui(user)
-    game.add_player(Users[user].id)
+        game.add_player(ws_to_player[user].id)
+    except Exception as error:
+        logger.exception(f"Player can't join to game. {error}")
+        FailConnect(user)
 
-def PosholNahui(user):
-    # PasskudaMat'TvouANuIdiSudaGovnoSobach'e
+
+def FailConnect(user):
     user.send('Fail Connect')
 
 
@@ -131,24 +129,25 @@ def ProcessMessage(ws, message):
         CreateGame(ws)
     elif message[0] == "JoinGame":
         JoinGame(ws, message[1])
-    elif message == "Durka":
-        print("SASHA loh!1!")
+    elif message == "to be continued...":
+        pass
+
 
 @sockets.route('/socket')
 def socket(ws):
     player = Player()
-    USERS[ws] = player
-    WEB[player.id] = ws
-    lb.register(ws)
+    ws_to_player[ws] = player
+    id_to_ws[player.id] = ws
+    main_lobby.register(ws)
     while not ws.closed:
-        gevent.sleep(0.1)
+        gv_sleep(0.1)
         message = ws.receive()
         if message:
             # processing requests from the client
             redis.publish(REDIS_CHAN, message)
-            ProcossMessage(ws, message)
+            ProcessMessage(ws, message)
         else:
-            lb.unregister(ws)
+            main_lobby.unregister(ws)
 
 
 @app.route('/')
@@ -157,9 +156,18 @@ def index():
 
 
 if __name__ == '__main__':
-    from gevent import pywsgi
-    from geventwebsocket.handler import WebSocketHandler
-    server = pywsgi.WSGIServer(
-        ('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler
-    )
+    """Constants"""
+    REDIS_CHAN = 'Secret?!'
+    """Create logger"""
+    logger = logging.getLogger('app')
+    logger.setLevel(logging.DEBUG)
+    file_handler = logging.FileHandler('app.log')
+    file_handler.setFormatter(logging.Formatter('%(filename)s[LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'))
+    logger.addHandler(file_handler)
+    """Create Lobby and global dicts"""
+    main_lobby = Lobby()
+    ws_to_player = {}  # web_socket -> Player
+    id_to_ws = {}  # player_id -> web_socket
+    """Start server"""
+    server = pywsgi.WSGIServer(('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler)
     server.serve_forever()
