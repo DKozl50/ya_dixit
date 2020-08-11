@@ -2,7 +2,7 @@ module Main
 
 open Fable.Core.JsInterop
 
-importAll "../styles/css/bulma.css"
+importAll "bulma/css/bulma.css"
 importAll "../styles/styles.sass"
 
 open Elmish
