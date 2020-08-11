@@ -4,6 +4,8 @@ from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
 from geventwebsocket.handler import WebSocketHandler
 import os
+import json
+import time
 import redis
 import logging
 
@@ -102,22 +104,123 @@ class GameBackend(object):
         spawn(self.run)
 
 
-def CreateGame(user):
+def CreateRoom(user):
     main_lobby.unregister(user)
     player = ws_to_player[user]
     game = Game()
     main_lobby.add_game(game.id)
     game.add_player(player.id)
+    ws_to_player[user].add_game_to_archive(game.id)
+    RoomConnect(game.id)
 
 
-def JoinGame(user, game_id):
+def JoinRoom(user, game_id):
     try:
         main_lobby.unregister(user)
         game = Game.get_game(game_id)
         game.add_player(ws_to_player[user].id)
+        ws_to_player[user].add_game_to_archive(game_id)
+        RoomConnect(game_id)
     except Exception as error:
         logger.exception(f"Player can't join to game. {error}")
         FailConnect(user)
+
+
+def LeaveRoom(user):
+    player = ws_to_player[user]
+    game_id = player.get_cur_game()
+    game = Game.get_game(game_id)
+    game.remove_player(player.id)
+    if len(game.players) == 0:
+        Game.delete_game(game_id)
+    main_lobby.register(user)
+
+
+def SelectCard(user, card_id):
+    player = ws_to_player[user]
+    game = Game.get_game(player.get_cur_game())
+    cur_player = game.get_cur_player()
+    cur_state = game.get_state()
+    if cur_state == Game.States.INTERLUDE:
+        return
+    if cur_state == Game.States.WAITING:
+        return
+    if cur_state == Game.States.VICTORY:
+        return
+    if cur_state == Game.States.GUESSING and player.id != cur_player:
+        game.make_guess(player.id, card_id)
+    if cur_state == Game.States.MATCHING and player.id != cur_player:
+        game.make_bet(player.id, card_id)
+    if cur_state == Game.States.STORYTELLING and player.id == cur_player:
+        game.add_lead_card(card_id)
+    RoomUpdate(user)
+
+
+def TellStory(user, story):
+    player = ws_to_player[user]
+    game = Game.get_game(player.get_cur_game())
+    cur_player = game.get_cur_player()
+    cur_state = game.get_state()
+    if cur_state != Game.States.STORYTELLING:
+        return
+    if cur_player != player.id:
+        return
+    game.start_turn(story)
+    RoomUpdate(user)
+
+
+def EndTurn(user):
+    player = ws_to_player[user]
+    game = Game.get_game(player.get_cur_game())
+    cur_player = game.get_cur_player()
+    cur_state = game.get_state()
+    if cur_state != Game.States.GUESSING and cur_state != Game.States.MATCHING:
+        return
+    if cur_state == Game.States.GUESSING and player.id != cur_player:
+        game.finish_turn(player)
+        if game.all_turns_ended():
+            game.valuate_guesses()
+            RoomUpdateAll(user)
+            game.end_turn()
+            time.sleep(10)
+            tmp = game.finished()
+            if tmp is not None:
+                game.end_game(tmp)
+                RoomUpdateAll(user)
+                time.sleep(10)
+                game.start_game()
+                return
+    if cur_state == Game.States.MATCHING and player.id != cur_player:
+        game.finish_turn(player)
+        if game.all_turns_ended():
+            game.place_cards()
+            RoomUpdateAll(user)
+    RoomUpdate(user)
+
+
+def RoomUpdateAll(user):
+    player = ws_to_player[user]
+    game = Game.get_game(player.get_cur_game())
+    for pl in game.players:
+        RoomUpdate(id_to_ws[pl])
+
+
+def RoomConnect(user, game_id):
+    mas = []
+    mas.append('RoomConnect')
+    mas.append(str(game_id))
+    game = Game.get_game(game_id)
+    mas.append(game.make_current_game_state(ws_to_player[user]))
+    user.send(json.dumps(mas))
+
+
+def RoomUpdate(user):
+    mas = []
+    player = ws_to_player[user]
+    game = Game.get_game(player.get_cur_game())
+    mas.append('RoomUpdate')
+    mas.append(game.make_current_game_state(ws_to_player[user]))
+    user.send(json.dumps(mas))
 
 
 def FailConnect(user):
@@ -125,12 +228,19 @@ def FailConnect(user):
 
 
 def ProcessMessage(ws, message):
-    if message == "CreateGame":
-        CreateGame(ws)
-    elif message[0] == "JoinGame":
-        JoinGame(ws, message[1])
-    elif message == "to be continued...":
-        pass
+    if message[0] == "CreateRoom":
+        CreateRoom(ws)
+    elif message[0] == "JoinRoom":
+        JoinRoom(ws, message[1])
+    elif message == "LeaveRoom":
+        LeaveRoom(ws)
+    elif message[0] == "SelectCard":
+        SelectCard(ws, message[1])
+    elif message[0] == "TellStory":
+        TellStory(ws, message[1])
+    else:
+        EndTurn(ws)
+
 
 
 @sockets.route('/socket')

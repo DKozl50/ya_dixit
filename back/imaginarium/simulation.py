@@ -9,10 +9,10 @@ def main():
             args = list(map(int, args))
             if request == '1':
                 # args {web_socket}
-                CreateGame(*args)
+                CreateRoom(*args)
             elif request == '2':
                 # args {web_socket, game_id}
-                JoinGame(*args)
+                JoinRoom(*args)
             elif request == '3':
                 # args {web_socket}
                 FailConnect(*args)
