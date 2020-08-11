@@ -251,9 +251,11 @@ let private roomComponent =
         let btnClickable = moveA && cardSelected
 
         let storyteller =
-            if isStoryteller
-            then s.State.Client
-            else List.find (fun p -> p.Role = PlayerRole.Storyteller) s.State.Opponents
+            if isStoryteller then
+                s.State.Client
+            else
+                List.tryFind (fun p -> p.Role = PlayerRole.Storyteller) s.State.Opponents
+                |> Option.defaultValue s.State.Client
 
         let handMap id =
             { ID = id
