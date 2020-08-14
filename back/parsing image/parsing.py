@@ -17,7 +17,7 @@ def cnt_pages(URL):
 
 
 def get_pictures_on_page(URL):
-    fix_link = compile(r'https://sun1-\d+.userapi.com')
+    fix_link = compile(r'https://sun\d+-\d+.userapi.com')
     imgs = []
     with requests.Session() as session:
         s = session.get(URL, headers=headers)
@@ -44,7 +44,7 @@ def all_parse(URL):
         links.extend(pictures)
     print(f'Спарсили за {round(default_timer() - start, 2)}с.')
     save_links(links)
-    save_images(links)
+    # save_images(links)
 
 
 def update_image(URL):
@@ -65,8 +65,8 @@ def update_image(URL):
         break
     with open('links.txt', 'a', encoding='utf-8') as file:
         print('\n'.join(map(str, links)), file=file)
-    save_images(links)
     print(f'Сохранили {len(links)} новых картинок')
+    # save_images(links)
 
 
 def save_images(links):
