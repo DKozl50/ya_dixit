@@ -1,20 +1,16 @@
 from mechanics import Player, Game, Card, Pack
-from typing import Dict
 from flask import Flask, redirect, url_for
 from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
 from geventwebsocket.handler import WebSocketHandler
-from geventwebsocket import websocket
 import os
 import json
 import time
 import redis
-from redis.client import Redis
 import logging
 
 app = Flask(__name__, static_folder='static')
 sockets = Sockets(app)
-redis = redis.from_url(url='redis://localhost:6379')
 
 
 class Lobby(object):
@@ -30,7 +26,7 @@ class Lobby(object):
         for message in self.pubsub.listen():
             data = message.get('data')
             if message['type'] == 'message':
-                logger.info(u'Sending message: {}'.format(data))
+                app.logger.info(u'Sending message: {}'.format(data))
                 yield data
 
     def add_game(self, game_id):
@@ -77,7 +73,7 @@ class GameBackend(object):
         for message in self.pubsub.listen():
             data = message.get('data')
             if message['type'] == 'message':
-                logger.info(u'Sending message: {}'.format(data))
+                app.logger.info(u'Sending message: {}'.format(data))
                 yield data
 
     def register(self, client):
@@ -115,7 +111,7 @@ def CreateRoom(user):
     main_lobby.add_game(game.id)
     game.add_player(player.id)
     ws_to_player[user].add_game_to_archive(game.id)
-    RoomConnect(user, game.id)
+    RoomConnect(game.id)
 
 
 def JoinRoom(user, game_id):
@@ -124,7 +120,7 @@ def JoinRoom(user, game_id):
         game = Game.get_game(game_id)
         game.add_player(ws_to_player[user].id)
         ws_to_player[user].add_game_to_archive(game_id)
-        RoomConnect(user, game_id)
+        RoomConnect(game_id)
     except Exception as error:
         logger.exception(f"Player can't join to game. {error}")
         FailConnect(user)
@@ -214,7 +210,7 @@ def RoomConnect(user, game_id):
     mas.append('RoomConnect')
     mas.append(str(game_id))
     game = Game.get_game(game_id)
-    mas.append(game.make_current_game_state(ws_to_player[user].id))
+    mas.append(game.make_current_game_state(ws_to_player[user]))
     user.send(json.dumps(mas))
 
 
@@ -223,7 +219,7 @@ def RoomUpdate(user):
     player = ws_to_player[user]
     game = Game.get_game(player.get_cur_game())
     mas.append('RoomUpdate')
-    mas.append(game.make_current_game_state(ws_to_player[user].id))
+    mas.append(game.make_current_game_state(ws_to_player[user]))
     user.send(json.dumps(mas))
 
 
@@ -232,7 +228,6 @@ def FailConnect(user):
 
 
 def ProcessMessage(ws, message):
-    print(f'!!!!!!!!!!!!!!!!!!!KEK: {message}')
     if message[0] == "CreateRoom":
         CreateRoom(ws)
     elif message[0] == "JoinRoom":
@@ -247,9 +242,10 @@ def ProcessMessage(ws, message):
         EndTurn(ws)
 
 
+
 @sockets.route('/socket')
 def socket(ws):
-    player = Player("Alice")
+    player = Player()
     ws_to_player[ws] = player
     id_to_ws[player.id] = ws
     main_lobby.register(ws)
@@ -259,7 +255,7 @@ def socket(ws):
         if message:
             # processing requests from the client
             redis.publish(REDIS_CHAN, message)
-            ProcessMessage(ws, json.loads(message))
+            ProcessMessage(ws, message)
         else:
             main_lobby.unregister(ws)
 
@@ -280,8 +276,8 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     """Create Lobby and global dicts"""
     main_lobby = Lobby()
-    ws_to_player: Dict[websocket.WebSocket, Player] = {}  # web_socket -> Player
-    id_to_ws: Dict[int, websocket.WebSocket] = {}  # player_id -> web_socket
+    ws_to_player = {}  # web_socket -> Player
+    id_to_ws = {}  # player_id -> web_socket
     """Start server"""
     server = pywsgi.WSGIServer(('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler)
     server.serve_forever()
