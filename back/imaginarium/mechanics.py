@@ -52,16 +52,16 @@ class Game:
     """id: Game.id
     packs: {Pack.id} # или карты?
     players: [Player]
-    result: {Player.id: int}
-    turn_ended: {Player.id: bool}
+    result: {Player: int}
+    turn_ended: {Player: bool}
     num_players_to_start: int # минимальное количество игроков, чтобы игра началась
-    bets: {Player.id: Card.id}
-    guesses: {Player.id: Card.id}
-    winner: Player.id or None
+    bets: {Player: Card.id}
+    guesses: {Player: Card.id}
+    winner: Player or None
     settings: dict
 
     _state: Waiting/Storytelling/Matching/Guessing/Interlude/Victory
-    _turn: None/Player.id
+    _turn: None/Player
     """
     __game_ids: Dict[int, Any] = {}
 
@@ -87,7 +87,7 @@ class Game:
             'move_time': 60,  # in seconds
             'rule_set': self.RuleSet.IMAGINARIUM  # only IMAGINARIUM for now
         }
-        self._num_players_to_start = 3 # TODO game should be started by leader of the room
+        self._num_players_to_start = 3  # TODO game should be started by leader of the room
         self._bets = dict()
         self._guesses = dict()
         self._state = self.GamePhase.WAITING
@@ -100,21 +100,21 @@ class Game:
         self._lead_card = None
         self._current_table = dict()
 
-    def add_player(self, player_id):
+    def add_player(self, player: Player):
         """Can be called before and in the game
         If game has already started
         deals 6 cards to new player.
         """
-        self.players.append(player_id)
-        self._hands[player_id] = []
-        self._turn_ended[player_id] = True
-        if player_id in self.result:
+        self.players.append(player)
+        self._hands[player] = []
+        self._turn_ended[player] = True
+        if player in self.result:
             # deal with 'did_not_finish *number*'
-            self.result[player_id] = int(self.result[player_id].split()[1])
+            self.result[player] = int(self.result[player].split()[1])
         else:
-            self.result[player_id] = 0
+            self.result[player] = 0
         if self._state != self.GamePhase.WAITING:
-            self._deal_hand(player_id)
+            self._deal_hand(player)
         if len(self.players) >= self._num_players_to_start:
             self.start_game()
 
@@ -161,7 +161,7 @@ class Game:
 
     def place_cards(self):
         """Removes cards from players and adds them to the current table.
-        bets: {Player.id: Card.id}
+        bets: {Player: Card.id}
         """
         for player, card in self._bets.items():
             self._hands[player].remove(card)
@@ -174,19 +174,21 @@ class Game:
 
     def valuate_guesses(self):
         """Changes score according to guesses.
-        guesses: {Player.id: Card.id}
+        guesses: {Player: Card.id}
         """
         self._state = self.GamePhase.INTERLUDE
         if self.settings['rule_set'] == Game.RuleSet.IMAGINARIUM:
             # everyone guessed leader
-            if all(self._lead_card == selected_card for selected_card in self._guesses.values()):
+            if all(self._lead_card ==
+                   selected_card for selected_card in self._guesses.values()):
                 self.result[self._current_player] -= 3
                 self.result[self._current_player] = max(
                     0, self.result[self._current_player]
                 )  # score cannot be under the zero
                 return
 
-            if all(self._lead_card != selected_card for selected_card in self._guesses.values()):
+            if all(self._lead_card !=
+                   selected_card for selected_card in self._guesses.values()):
                 # no one guessed leader
                 self.result[self._current_player] -= 2
                 self.result[self._current_player] = max(
@@ -309,46 +311,45 @@ class Game:
         self._hands[target] = self._cards[:needed]
         self._cards = self._cards[needed:]
 
-    def make_example_player(self, player_id):
-        player = Player.get_player(player_id)
+    def make_example_player(self, player):
         to_return = dict()
         to_return['Name'] = player.name
-        if self._current_player == player_id:
+        if self._current_player == player:
             to_return['Role'] = 'Storyteller'
         elif self._state == self.GamePhase.GUESSING:
-            if self._turn_ended[player_id] is True and player_id not in self._guesses:
+            if self._turn_ended[player] is True and player not in self._guesses:
                 to_return['Role'] = 'Spectator'
             else:
                 to_return['Role'] = 'Listener'
         elif self._state == self.GamePhase.MATCHING:
-            if self._turn_ended[player_id] is True and player_id not in self._bets:
+            if self._turn_ended[player] is True and player not in self._bets:
                 to_return['Role'] = 'Spectator'
             else:
                 to_return['Role'] = 'Listener'
         else:
             to_return['Role'] = 'Listener'
-        to_return['Score'] = self.result[player_id]
-        to_return['MoveAvailable'] = not self._turn_ended[player_id]
+        to_return['Score'] = self.result[player]
+        to_return['MoveAvailable'] = not self._turn_ended[player]
         return to_return
 
-    def make_current_game_state(self, player_id):
+    def make_current_game_state(self, player):
         to_return = dict()
-        to_return['Client'] = self.make_example_player(player_id)
+        to_return['Client'] = self.make_example_player(player)
         opponents = []
-        for player in self.players:
-            if player != player_id:
-                opponents.append(self.make_example_player(player))
+        for other_player in self.players:
+            if other_player != player:
+                opponents.append(self.make_example_player(other_player))
         to_return['Opponents'] = opponents
         player_hand = dict()
-        player_hand['Cards'] = self.get_hand(player_id)
+        player_hand['Cards'] = self.get_hand(player)
         if self._state == self.GamePhase.MATCHING:
-            if player_id in self._bets:
-                player_hand['SelectedCard'] = self._bets[player_id]
+            if player in self._bets:
+                player_hand['SelectedCard'] = self._bets[player]
             else:
                 player_hand['SelectedCard'] = None
         elif self._state == self.GamePhase.GUESSING:
-            if player_id in self._guesses:
-                player_hand['SelectedCard'] = self._guesses[player_id]
+            if player in self._guesses:
+                player_hand['SelectedCard'] = self._guesses[player]
             else:
                 player_hand['SelectedCard'] = None
         else:

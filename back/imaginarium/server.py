@@ -19,6 +19,7 @@ redis = redis.from_url(url='redis://localhost:6379')
 
 class Lobby(object):
     """Interface for registering and updating WebSocket clients."""
+
     def __init__(self):
         self.games = list()
         self.clients = list()
@@ -45,6 +46,10 @@ class Lobby(object):
     def unregister(self, client):
         """Unregister a WebSocket connection"""
         self.clients.remove(client)
+
+    def process_message(self, ws, message):
+        """Process a message from a client"""
+        pass
 
     def send(self, client, data):
         """Send given data to the registered client.
@@ -83,16 +88,16 @@ class GameBackend(object):
                 logger.info(u'Sending message: {}'.format(data))
                 yield data
 
-    def process_message(self, player: Player, message: Any):
+    def process_message(self, ws: websocket.WebSocket, message: Any):
+        player = ws_to_player[ws]
         if message[0] == "LeaveRoom":
-            pass
+            leave_room(ws)
         elif message[0] == "SelectCard":
-            pass
+            SelectCard(ws, int(message[1]))
         elif message[0] == "TellStory":
-            pass
+            TellStory(ws, message[1])
         elif message[0] == "EndTurn":
             pass
-
 
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
@@ -149,41 +154,46 @@ def leave_room(ws: websocket.WebSocket) -> None:
     game = player.current_game
     game.remove_player(player)
     if len(game.players) == 0:
-        GameBackend.delete_game(game)
+        game_backend = GameBackend.backend[ws]
+        GameBackend.backend.pop(ws)
+        del game_backend
+    else:
+        GameBackend.backend.pop(ws)
+
     main_lobby.register(ws)
 
 
-def SelectCard(user, card_id):
-    player = ws_to_player[user]
-    game = Game.get_game(player.get_cur_game())
+def SelectCard(ws: websocket.WebSocket, card_id: int) -> None:
+    player = ws_to_player[ws]
+    game = player.current_game
     cur_player = game.get_cur_player()
-    cur_state = game.get_state()
-    if cur_state == Game.GamePhase.INTERLUDE:
+    cur_phase = game.get_phase()
+    if cur_phase == Game.GamePhase.INTERLUDE:
         return
-    if cur_state == Game.GamePhase.WAITING:
+    if cur_phase == Game.GamePhase.WAITING:
         return
-    if cur_state == Game.GamePhase.VICTORY:
+    if cur_phase == Game.GamePhase.VICTORY:
         return
-    if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
-        game.make_guess(player.id, card_id)
-    if cur_state == Game.GamePhase.MATCHING and player.id != cur_player:
-        game.make_bet(player.id, card_id)
-    if cur_state == Game.GamePhase.STORYTELLING and player.id == cur_player:
+    if cur_phase == Game.GamePhase.GUESSING and player != cur_player:
+        game.make_guess(player, card_id)
+    if cur_phase == Game.GamePhase.MATCHING and player != cur_player:
+        game.make_bet(player, card_id)
+    if cur_phase == Game.GamePhase.STORYTELLING and player == cur_player:
         game.add_lead_card(card_id)
-    RoomUpdate(user)
+    RoomUpdate(ws)
 
 
-def TellStory(user, story):
-    player = ws_to_player[user]
-    game = Game.get_game(player.get_cur_game())
+def TellStory(ws: websocket.WebSocket, story: str) -> None:
+    player = ws_to_player[ws]
+    game = Game.get_game(player.current_game)
     cur_player = game.get_cur_player()
     cur_state = game.get_state()
     if cur_state != Game.GamePhase.STORYTELLING:
         return
-    if cur_player != player.id:
+    if cur_player != player:
         return
     game.start_turn(story)
-    RoomUpdate(user)
+    RoomUpdate(ws)
 
 
 def EndTurn(user):
@@ -234,6 +244,7 @@ def RoomConnect(user, game_id):
 def game_by_ws(ws: websocket.WebSocket) -> Optional[GameBackend]:
     return GameBackend.backend.get(ws)
 
+
 def RoomUpdate(user):
     mas = []
     player = ws_to_player[user]
@@ -250,9 +261,9 @@ def FailConnect(user):
 def route_message(ws: websocket.WebSocket, message: Any):
     if type(message) not in [str, list]:
         logger.info(f"Unexpected type of message: {message}")
-        return 
+        return
 
-    if type(message) == str:
+    if isinstance(message, str):
         message = [message]
 
     if message[0] == "CreateRoom":
@@ -263,10 +274,10 @@ def route_message(ws: websocket.WebSocket, message: Any):
         game_backend = game_by_ws(ws)
         if game_backend is None:
             logger.info(f"Unexpected message from client: {message}")
-            return 
+            return
 
-        if  message[0] in ["LeaveRoom", "SelectCard", "TellStory", "EndTurn"]:
-            game_backend.process_message(ws_to_player[ws], message)
+        if message[0] in ["LeaveRoom", "SelectCard", "TellStory", "EndTurn"]:
+            game_backend.process_message(ws, message)
         else:
             logger.info(f"Unexpected message from client: {message}")
 
@@ -302,14 +313,17 @@ if __name__ == '__main__':
     logger = logging.getLogger('app')
     logger.setLevel(logging.DEBUG)
     file_handler = logging.FileHandler('app.log')
-    file_handler.setFormatter(logging.Formatter('%(filename)s[LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'))
+    file_handler.setFormatter(logging.Formatter(
+        '%(filename)s[LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'))
     logger.addHandler(file_handler)
     """Create Lobby and global dicts"""
     main_lobby = Lobby()
     main_lobby.run()
 
-    ws_to_player: Dict[websocket.WebSocket, Player] = {}  # web_socket -> Player
+    ws_to_player: Dict[websocket.WebSocket,
+                       Player] = {}  # web_socket -> Player
     id_to_ws: Dict[int, websocket.WebSocket] = {}  # player_id -> web_socket
     """Start server"""
-    server = pywsgi.WSGIServer(('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler)
+    server = pywsgi.WSGIServer(
+        ('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler)
     server.serve_forever()
