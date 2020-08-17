@@ -1,0 +1,7 @@
+{
+    "python.pythonPath": "c:\\Users\\alisa\\OneDrive\\Desktop\\Some sorted stuff\\Summer\\imaginarium\\Game\\ya_dixit\\back\\imaginarium\\venv\\Scripts\\python.exe",
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.linting.enabled": true,
+    "python.linting.mypyEnabled": true
+}
