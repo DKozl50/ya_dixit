@@ -1,5 +1,5 @@
 from mechanics import Player, Game, Card, Pack
-from typing import Dict
+from typing import Any, Dict, Optional, Union
 from flask import Flask, redirect, url_for
 from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
@@ -19,7 +19,6 @@ redis = redis.from_url(url='redis://localhost:6379')
 
 class Lobby(object):
     """Interface for registering and updating WebSocket clients."""
-
     def __init__(self):
         self.games = list()
         self.clients = list()
@@ -27,7 +26,10 @@ class Lobby(object):
         self.pubsub.subscribe(REDIS_CHAN)
 
     def __iter_data(self):
+        message: object
         for message in self.pubsub.listen():
+            print(type(message))
+            print(message)
             data = message.get('data')
             if message['type'] == 'message':
                 logger.info(u'Sending message: {}'.format(data))
@@ -66,6 +68,7 @@ class Lobby(object):
 
 class GameBackend(object):
     """Interface for game and updating WebSocket clients."""
+    backend: Dict[websocket.WebSocket, Any] = {}
 
     def __init__(self):
         self.game = Game()
@@ -79,6 +82,17 @@ class GameBackend(object):
             if message['type'] == 'message':
                 logger.info(u'Sending message: {}'.format(data))
                 yield data
+
+    def process_message(self, player: Player, message: Any):
+        if message[0] == "LeaveRoom":
+            pass
+        elif message[0] == "SelectCard":
+            pass
+        elif message[0] == "TellStory":
+            pass
+        elif message[0] == "EndTurn":
+            pass
+
 
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
@@ -130,14 +144,13 @@ def JoinRoom(user, game_id):
         FailConnect(user)
 
 
-def LeaveRoom(user):
-    player = ws_to_player[user]
-    game_id = player.get_cur_game()
-    game = Game.get_game(game_id)
-    game.remove_player(player.id)
+def leave_room(ws: websocket.WebSocket) -> None:
+    player = ws_to_player[ws]
+    game = player.current_game
+    game.remove_player(player)
     if len(game.players) == 0:
-        Game.delete_game(game_id)
-    main_lobby.register(user)
+        GameBackend.delete_game(game)
+    main_lobby.register(ws)
 
 
 def SelectCard(user, card_id):
@@ -145,17 +158,17 @@ def SelectCard(user, card_id):
     game = Game.get_game(player.get_cur_game())
     cur_player = game.get_cur_player()
     cur_state = game.get_state()
-    if cur_state == Game.States.INTERLUDE:
+    if cur_state == Game.GamePhase.INTERLUDE:
         return
-    if cur_state == Game.States.WAITING:
+    if cur_state == Game.GamePhase.WAITING:
         return
-    if cur_state == Game.States.VICTORY:
+    if cur_state == Game.GamePhase.VICTORY:
         return
-    if cur_state == Game.States.GUESSING and player.id != cur_player:
+    if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
         game.make_guess(player.id, card_id)
-    if cur_state == Game.States.MATCHING and player.id != cur_player:
+    if cur_state == Game.GamePhase.MATCHING and player.id != cur_player:
         game.make_bet(player.id, card_id)
-    if cur_state == Game.States.STORYTELLING and player.id == cur_player:
+    if cur_state == Game.GamePhase.STORYTELLING and player.id == cur_player:
         game.add_lead_card(card_id)
     RoomUpdate(user)
 
@@ -165,7 +178,7 @@ def TellStory(user, story):
     game = Game.get_game(player.get_cur_game())
     cur_player = game.get_cur_player()
     cur_state = game.get_state()
-    if cur_state != Game.States.STORYTELLING:
+    if cur_state != Game.GamePhase.STORYTELLING:
         return
     if cur_player != player.id:
         return
@@ -178,9 +191,9 @@ def EndTurn(user):
     game = Game.get_game(player.get_cur_game())
     cur_player = game.get_cur_player()
     cur_state = game.get_state()
-    if cur_state != Game.States.GUESSING and cur_state != Game.States.MATCHING:
+    if cur_state != Game.GamePhase.GUESSING and cur_state != Game.GamePhase.MATCHING:
         return
-    if cur_state == Game.States.GUESSING and player.id != cur_player:
+    if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
         game.finish_turn(player)
         if game.all_turns_ended():
             game.valuate_guesses()
@@ -194,7 +207,7 @@ def EndTurn(user):
                 time.sleep(10)
                 game.start_game()
                 return
-    if cur_state == Game.States.MATCHING and player.id != cur_player:
+    if cur_state == Game.GamePhase.MATCHING and player.id != cur_player:
         game.finish_turn(player)
         if game.all_turns_ended():
             game.place_cards()
@@ -218,6 +231,9 @@ def RoomConnect(user, game_id):
     user.send(json.dumps(mas))
 
 
+def game_by_ws(ws: websocket.WebSocket) -> Optional[GameBackend]:
+    return GameBackend.backend.get(ws)
+
 def RoomUpdate(user):
     mas = []
     player = ws_to_player[user]
@@ -228,31 +244,41 @@ def RoomUpdate(user):
 
 
 def FailConnect(user):
-    user.send('Fail Connect')
+    user.send('"FailConnect"')
 
 
-def ProcessMessage(ws, message):
-    print(f'!!!!!!!!!!!!!!!!!!!KEK: {message}')
+def route_message(ws: websocket.WebSocket, message: Any):
+    if type(message) not in [str, list]:
+        logger.info(f"Unexpected type of message: {message}")
+        return 
+
+    if type(message) == str:
+        message = [message]
+
     if message[0] == "CreateRoom":
-        CreateRoom(ws)
+        main_lobby.process_message(ws, message)
     elif message[0] == "JoinRoom":
-        JoinRoom(ws, message[1])
-    elif message == "LeaveRoom":
-        LeaveRoom(ws)
-    elif message[0] == "SelectCard":
-        SelectCard(ws, message[1])
-    elif message[0] == "TellStory":
-        TellStory(ws, message[1])
+        main_lobby.process_message(ws, message)
     else:
-        EndTurn(ws)
+        game_backend = game_by_ws(ws)
+        if game_backend is None:
+            logger.info(f"Unexpected message from client: {message}")
+            return 
+
+        if  message[0] in ["LeaveRoom", "SelectCard", "TellStory", "EndTurn"]:
+            game_backend.process_message(ws_to_player[ws], message)
+        else:
+            logger.info(f"Unexpected message from client: {message}")
 
 
-@sockets.route('/socket')
+@sockets.route("/socket")
 def socket(ws):
-    player = Player("Alice")
+    main_lobby.register(ws)
+    e2
+    player = Player("noname")
     ws_to_player[ws] = player
     id_to_ws[player.id] = ws
-    main_lobby.register(ws)
+
     while not ws.closed:
         gv_sleep(0.1)
         message = ws.receive()
@@ -280,6 +306,8 @@ if __name__ == '__main__':
     logger.addHandler(file_handler)
     """Create Lobby and global dicts"""
     main_lobby = Lobby()
+    main_lobby.run()
+
     ws_to_player: Dict[websocket.WebSocket, Player] = {}  # web_socket -> Player
     id_to_ws: Dict[int, websocket.WebSocket] = {}  # player_id -> web_socket
     """Start server"""
