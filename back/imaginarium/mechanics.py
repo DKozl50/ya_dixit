@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from random import shuffle
+from typing import Dict
 from uuid import uuid1
 import logging
 
@@ -16,7 +17,7 @@ class Player:
     game_archive: [Game.id]
     password_hash: hash
     """
-    __player_ids = {}
+    __player_ids: Dict[int, object] = {}
 
     def __init__(self, name, password_hash=None):
         self.__get_new_id()
@@ -67,7 +68,7 @@ class Game:
     _state: Waiting/Storytelling/Matching/Guessing/Interlude/Victory
     _turn: None/Player.id
     """
-    __game_ids = {}
+    __game_ids: Dict[int, object] = {}
 
     class States(Enum):
         WAITING = auto()
@@ -102,7 +103,7 @@ class Game:
         self._winner = None
         self._current_player = None
         self._lead_card = None
-        self._current_table = None
+        self._current_table = dict()
 
     def add_player(self, player_id):
         """Can be called before and in the game
@@ -235,7 +236,8 @@ class Game:
         if self._turn_ended[player] is True:
             return
         if card in self._current_table:
-            self._guesses[player] = card
+            if self._current_table[card] != player:
+                self._guesses[player] = card
 
     def add_lead_card(self, card):
         self._lead_card = card
@@ -279,7 +281,7 @@ class Game:
 
     def get_votes(self, card_id):
         votes = []
-        for player, card in self._guesse.items():
+        for player, card in self._guesses.items():
             if card == card_id:
                 votes.append(self.make_example_player(player))
         return votes
@@ -409,7 +411,7 @@ class Card:
     picture: link
     pack_id: Pack.id
     """
-    __card_ids = {}
+    __card_ids: dict = {}
 
     def __init__(self, picture, pack_id):
         self._get_new_id()
@@ -427,7 +429,7 @@ class Pack:
     name: string
     description: string
     """
-    __pack_ids = {}
+    __pack_ids: Dict[int, object] = {}
 
     def __init__(self, name, description):
         self._get_new_id()
