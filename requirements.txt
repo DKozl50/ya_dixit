@@ -2,3 +2,5 @@ asyncio
 websockets
 flask
 flask_sockets
+redis
+gevent
