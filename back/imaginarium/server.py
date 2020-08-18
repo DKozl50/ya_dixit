@@ -9,10 +9,9 @@ import os
 import json
 import time
 import redis
-from redis.client import Redis
 import logging
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='../../front/deploy')
 sockets = Sockets(app)
 redis = redis.from_url(url='redis://localhost:6379')
 
@@ -36,8 +35,8 @@ class Lobby(object):
                 logger.info(u'Sending message: {}'.format(data))
                 yield data
 
-    def add_game(self, game_id):
-        self.games.append(game_id)
+    def add_game(self, game):
+        self.games.append(game)
 
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
@@ -49,7 +48,8 @@ class Lobby(object):
 
     def process_message(self, ws, message):
         """Process a message from a client"""
-        pass
+        if message[0] == "CreateRoom":
+            CreateRoom(ws)
 
     def send(self, client, data):
         """Send given data to the registered client.
@@ -97,7 +97,7 @@ class GameBackend(object):
         elif message[0] == "TellStory":
             TellStory(ws, message[1])
         elif message[0] == "EndTurn":
-            pass
+            EndTurn(ws)
 
     def register(self, client):
         """Register a WebSocket connection for Redis updates."""
@@ -127,14 +127,18 @@ class GameBackend(object):
         spawn(self.run)
 
 
-def CreateRoom(user):
-    main_lobby.unregister(user)
-    player = ws_to_player[user]
-    game = Game()
-    main_lobby.add_game(game.id)
-    game.add_player(player.id)
-    ws_to_player[user].add_game_to_archive(game.id)
-    RoomConnect(user, game.id)
+def CreateRoom(ws):
+    main_lobby.unregister(ws)
+    player = ws_to_player[ws]
+    if player.current_game is not None:
+        FailConnect(ws)
+        return
+    game_backend = GameBackend()
+    GameBackend.backend[ws] = game_backend
+    game = game_backend.game
+    main_lobby.add_game(game)
+    game.add_player(player)
+    RoomConnect(ws, game)
 
 
 def JoinRoom(user, game_id):
@@ -201,7 +205,8 @@ def EndTurn(user):
     game = Game.get_game(player.get_cur_game())
     cur_player = game.get_cur_player()
     cur_state = game.get_state()
-    if cur_state != Game.GamePhase.GUESSING and cur_state != Game.GamePhase.MATCHING:
+    if cur_state != Game.GamePhase.GUESSING \
+            and cur_state != Game.GamePhase.MATCHING:
         return
     if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
         game.finish_turn(player)
@@ -232,12 +237,11 @@ def RoomUpdateAll(user):
         RoomUpdate(id_to_ws[pl])
 
 
-def RoomConnect(user, game_id):
+def RoomConnect(user, game):
     mas = []
     mas.append('RoomConnect')
-    mas.append(str(game_id))
-    game = Game.get_game(game_id)
-    mas.append(game.make_current_game_state(ws_to_player[user].id))
+    mas.append(str(game.id))
+    mas.append(game.make_current_game_state(ws_to_player[user]))
     user.send(json.dumps(mas))
 
 
@@ -259,10 +263,10 @@ def FailConnect(user):
 
 
 def route_message(ws: websocket.WebSocket, message: Any):
+    print(message)
     if type(message) not in [str, list]:
         logger.info(f"Unexpected type of message: {message}")
         return
-
     if isinstance(message, str):
         message = [message]
 
@@ -284,8 +288,8 @@ def route_message(ws: websocket.WebSocket, message: Any):
 
 @sockets.route("/socket")
 def socket(ws):
+    print("FUCK")
     main_lobby.register(ws)
-    e2
     player = Player("noname")
     ws_to_player[ws] = player
     id_to_ws[player.id] = ws
@@ -296,7 +300,7 @@ def socket(ws):
         if message:
             # processing requests from the client
             redis.publish(REDIS_CHAN, message)
-            ProcessMessage(ws, json.loads(message))
+            route_message(ws, json.loads(message))
         else:
             main_lobby.unregister(ws)
 
@@ -314,16 +318,20 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
     file_handler = logging.FileHandler('app.log')
     file_handler.setFormatter(logging.Formatter(
-        '%(filename)s[LINE:%(lineno)-3s]# %(levelname)-8s [%(asctime)s]  %(message)s'))
+        '%(filename)s[LINE:%(lineno)-3s]# '
+        '%(levelname)-8s [%(asctime)s]  %(message)s')
+    )
     logger.addHandler(file_handler)
     """Create Lobby and global dicts"""
     main_lobby = Lobby()
-    main_lobby.run()
+    # main_lobby.start()
 
     ws_to_player: Dict[websocket.WebSocket,
                        Player] = {}  # web_socket -> Player
     id_to_ws: Dict[int, websocket.WebSocket] = {}  # player_id -> web_socket
     """Start server"""
     server = pywsgi.WSGIServer(
-        ('', int(os.environ.get('PORT', 5000))), app, handler_class=WebSocketHandler)
+        ('', os.environ.get("PORT", 5000)),
+        app, handler_class=WebSocketHandler
+    )
     server.serve_forever()

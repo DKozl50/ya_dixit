@@ -106,6 +106,7 @@ class Game:
         deals 6 cards to new player.
         """
         self.players.append(player)
+        player.current_game = self
         self._hands[player] = []
         self._turn_ended[player] = True
         if player in self.result:
