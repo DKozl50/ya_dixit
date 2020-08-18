@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from random import shuffle
+from typing import Any, Dict
 from uuid import uuid1
 import logging
 
@@ -13,10 +14,10 @@ class Player:
     registered: bool
     friends: [Player.id]
     fav_packs: [Pack.id]
-    game_archive: [Game.id]
+    current_game: None | game_id
     password_hash: hash
     """
-    __player_ids = {}
+    __player_ids: Dict[int, Any] = {}
 
     def __init__(self, name, password_hash=None):
         self.__get_new_id()
@@ -24,7 +25,7 @@ class Player:
         self.picture = None
         self.friends = []
         self.fav_packs = []
-        self.game_archive = []
+        self.current_game = None
         if password_hash is None:
             self.registered = False
             self.password_hash = None
@@ -32,13 +33,8 @@ class Player:
             self.registered = True
             self.password_hash = password_hash
 
-    def add_game_to_archive(self, game_id):
-        self.game_archive.append(game_id)
+    # TODO add Databases
 
-    def get_cur_game(self):
-        return self.game_archive[-1]
-
-    # TODO add Database
     def __get_new_id(self):
         self.id = uuid1().time_low
         Player.__player_ids[self.id] = self
@@ -55,21 +51,21 @@ class Player:
 class Game:
     """id: Game.id
     packs: {Pack.id} # или карты?
-    players: [Player.id]
-    result: {Player.id: int}
-    turn_ended: {Player.id: bool}
+    players: [Player]
+    result: {Player: int}
+    turn_ended: {Player: bool}
     num_players_to_start: int # минимальное количество игроков, чтобы игра началась
-    bets: {Player.id: Card.id}
-    guesses: {Player.id: Card.id}
-    winner: Player.id or None
+    bets: {Player: Card.id}
+    guesses: {Player: Card.id}
+    winner: Player or None
     settings: dict
 
     _state: Waiting/Storytelling/Matching/Guessing/Interlude/Victory
-    _turn: None/Player.id
+    _turn: None/Player
     """
-    __game_ids = {}
+    __game_ids: Dict[int, Any] = {}
 
-    class States(Enum):
+    class GamePhase(Enum):
         WAITING = auto()
         STORYTELLING = auto()
         MATCHING = auto()
@@ -77,7 +73,7 @@ class Game:
         INTERLUDE = auto()
         VICTORY = auto()
 
-    class RuleSets(Enum):
+    class RuleSet(Enum):
         IMAGINARIUM = auto()
         DIXIT = auto()
 
@@ -89,12 +85,12 @@ class Game:
         self.settings = {
             'win_score': 40,
             'move_time': 60,  # in seconds
-            'rule_set': self.RuleSets.IMAGINARIUM  # only IMAGINARIUM for now
+            'rule_set': self.RuleSet.IMAGINARIUM  # only IMAGINARIUM for now
         }
-        self._num_players_to_start = 3 # TODO game should be started by leader of the room
+        self._num_players_to_start = 3  # TODO game should be started by leader of the room
         self._bets = dict()
         self._guesses = dict()
-        self._state = self.States.WAITING
+        self._state = self.GamePhase.WAITING
         self._hands = dict()
         self._current_association = ''
         self._turn_ended = dict()
@@ -102,38 +98,38 @@ class Game:
         self._winner = None
         self._current_player = None
         self._lead_card = None
-        self._current_table = None
+        self._current_table = dict()
 
-    def add_player(self, player_id):
+    def add_player(self, player: Player):
         """Can be called before and in the game
         If game has already started
         deals 6 cards to new player.
         """
-        self.players.append(player_id)
-        self._hands[player_id] = []
-        self._turn_ended[player_id] = True
-        if player_id in self.result:
+        self.players.append(player)
+        self._hands[player] = []
+        self._turn_ended[player] = True
+        if player in self.result:
             # deal with 'did_not_finish *number*'
-            self.result[player_id] = int(self.result[player_id].split()[1])
+            self.result[player] = int(self.result[player].split()[1])
         else:
-            self.result[player_id] = 0
-        if self._state != self.States.WAITING:
-            self._deal_hand(player_id)
+            self.result[player] = 0
+        if self._state != self.GamePhase.WAITING:
+            self._deal_hand(player)
         if len(self.players) >= self._num_players_to_start:
             self.start_game()
 
-    def remove_player(self, player_id):
+    def remove_player(self, player):
         """Removes player from game setting score as did_not_finish"""
-        self.players.remove(player_id)
-        if self._state != Game.States.WAITING:
+        self.players.remove(player)
+        if self._state != Game.GamePhase.WAITING:
             self._turn %= len(self.players)
             self._current_player = self.players[self._turn]
-            self._cards += self._hands[player_id]
-            self._hands[player_id] = []
-            self.result[player_id] = f'did_not_finish {self.result[player_id]}'
+            self._cards += self._hands[player]
+            self._hands[player] = []
+            self.result[player] = f'did_not_finish {self.result[player]}'
         else:
             # removes from results as the game has not started
-            self.result.pop(player_id)
+            self.result.pop(player)
 
     def start_game(self):
         """Shuffles players, generates card list,
@@ -147,7 +143,7 @@ class Game:
         for p in self.players:
             self._deal_hand(p)
         self._current_player = self.players[self._turn]
-        self._state = Game.States.STORYTELLING
+        self._state = Game.GamePhase.STORYTELLING
 
     def start_turn(self, association):
         """Sets association, removes card from active player.
@@ -161,11 +157,11 @@ class Game:
         self._current_table = {self._lead_card: self._current_player}
         self._hands[self._current_player].remove(self._lead_card)
         self._turn_ended[self._current_player] = True
-        self._state = self.States.MATCHING  # the next stage is matching
+        self._state = self.GamePhase.MATCHING  # the next stage is matching
 
     def place_cards(self):
         """Removes cards from players and adds them to the current table.
-        bets: {Player.id: Card.id}
+        bets: {Player: Card.id}
         """
         for player, card in self._bets.items():
             self._hands[player].remove(card)
@@ -174,23 +170,25 @@ class Game:
             self._turn_ended[player] = False
         self._guesses = dict()
         self._turn_ended[self._current_player] = True
-        self._state = self.States.GUESSING
+        self._state = self.GamePhase.GUESSING
 
     def valuate_guesses(self):
         """Changes score according to guesses.
-        guesses: {Player.id: Card.id}
+        guesses: {Player: Card.id}
         """
-        self._state = self.States.INTERLUDE
-        if self.settings['rule_set'] == Game.RuleSets.IMAGINARIUM:
+        self._state = self.GamePhase.INTERLUDE
+        if self.settings['rule_set'] == Game.RuleSet.IMAGINARIUM:
             # everyone guessed leader
-            if all(self._lead_card == selected_card for selected_card in self._guesses.values()):
+            if all(self._lead_card ==
+                   selected_card for selected_card in self._guesses.values()):
                 self.result[self._current_player] -= 3
                 self.result[self._current_player] = max(
                     0, self.result[self._current_player]
                 )  # score cannot be under the zero
                 return
 
-            if all(self._lead_card != selected_card for selected_card in self._guesses.values()):
+            if all(self._lead_card !=
+                   selected_card for selected_card in self._guesses.values()):
                 # no one guessed leader
                 self.result[self._current_player] -= 2
                 self.result[self._current_player] = max(
@@ -211,7 +209,7 @@ class Game:
                     self.result[card_owner] += 1
 
     def finish_turn(self, player):
-        if self._state == self.States.GUESSING and self._guesses[player] is None:
+        if self._state == self.GamePhase.GUESSING and self._guesses[player] is None:
             return
         self._turn_ended[player] = True
 
@@ -235,7 +233,8 @@ class Game:
         if self._turn_ended[player] is True:
             return
         if card in self._current_table:
-            self._guesses[player] = card
+            if self._current_table[card] != player:
+                self._guesses[player] = card
 
     def add_lead_card(self, card):
         self._lead_card = card
@@ -260,7 +259,7 @@ class Game:
         self._current_player = self.players[self._turn]
         self._current_association = None
         self._lead_card = None
-        self._state = Game.States.STORYTELLING
+        self._state = Game.GamePhase.STORYTELLING
 
     def finished(self):
         maximum = -1
@@ -274,12 +273,12 @@ class Game:
         return None
 
     def end_game(self, player):
-        self._state = Game.States.VICTORY
+        self._state = Game.GamePhase.VICTORY
         self._winner = player
 
     def get_votes(self, card_id):
         votes = []
-        for player, card in self._guesse.items():
+        for player, card in self._guesses.items():
             if card == card_id:
                 votes.append(self.make_example_player(player))
         return votes
@@ -312,46 +311,45 @@ class Game:
         self._hands[target] = self._cards[:needed]
         self._cards = self._cards[needed:]
 
-    def make_example_player(self, player_id):
-        player = Player.get_player(player_id)
+    def make_example_player(self, player):
         to_return = dict()
         to_return['Name'] = player.name
-        if self._current_player == player_id:
+        if self._current_player == player:
             to_return['Role'] = 'Storyteller'
-        elif self._state == self.States.GUESSING:
-            if self._turn_ended[player_id] is True and player_id not in self._guesses:
+        elif self._state == self.GamePhase.GUESSING:
+            if self._turn_ended[player] is True and player not in self._guesses:
                 to_return['Role'] = 'Spectator'
             else:
                 to_return['Role'] = 'Listener'
-        elif self._state == self.States.MATCHING:
-            if self._turn_ended[player_id] is True and player_id not in self._bets:
+        elif self._state == self.GamePhase.MATCHING:
+            if self._turn_ended[player] is True and player not in self._bets:
                 to_return['Role'] = 'Spectator'
             else:
                 to_return['Role'] = 'Listener'
         else:
             to_return['Role'] = 'Listener'
-        to_return['Score'] = self.result[player_id]
-        to_return['MoveAvailable'] = not self._turn_ended[player_id]
+        to_return['Score'] = self.result[player]
+        to_return['MoveAvailable'] = not self._turn_ended[player]
         return to_return
 
-    def make_current_game_state(self, player_id):
+    def make_current_game_state(self, player):
         to_return = dict()
-        to_return['Client'] = self.make_example_player(player_id)
+        to_return['Client'] = self.make_example_player(player)
         opponents = []
-        for player in self.players:
-            if player != player_id:
-                opponents.append(self.make_example_player(player))
+        for other_player in self.players:
+            if other_player != player:
+                opponents.append(self.make_example_player(other_player))
         to_return['Opponents'] = opponents
         player_hand = dict()
-        player_hand['Cards'] = self.get_hand(player_id)
-        if self._state == self.States.MATCHING:
-            if player_id in self._bets:
-                player_hand['SelectedCard'] = self._bets[player_id]
+        player_hand['Cards'] = self.get_hand(player)
+        if self._state == self.GamePhase.MATCHING:
+            if player in self._bets:
+                player_hand['SelectedCard'] = self._bets[player]
             else:
                 player_hand['SelectedCard'] = None
-        elif self._state == self.States.GUESSING:
-            if player_id in self._guesses:
-                player_hand['SelectedCard'] = self._guesses[player_id]
+        elif self._state == self.GamePhase.GUESSING:
+            if player in self._guesses:
+                player_hand['SelectedCard'] = self._guesses[player]
             else:
                 player_hand['SelectedCard'] = None
         else:
@@ -362,7 +360,7 @@ class Game:
         for card, player in self._current_table.items():
             mas = []
             mas.append(card)
-            if self._state == self.States.INTERLUDE:
+            if self._state == self.GamePhase.INTERLUDE:
                 tmp = dict()
                 tmp['Owner'] = self.make_example_player(player)
                 tmp['Voters'] = self.get_votes(card)
@@ -374,17 +372,17 @@ class Game:
         table['Story'] = self._current_association
         to_return['Table'] = table
         phase = []
-        if self._state == self.States.STORYTELLING:
+        if self._state == self.GamePhase.STORYTELLING:
             phase.append('Storytelling')
-        if self._state == self.States.WAITING:
+        if self._state == self.GamePhase.WAITING:
             phase.append('Waiting')
-        if self._state == self.States.MATCHING:
+        if self._state == self.GamePhase.MATCHING:
             phase.append('Matching')
-        if self._state == self.States.INTERLUDE:
+        if self._state == self.GamePhase.INTERLUDE:
             phase.append('Interlude')
-        if self._state == self.States.GUESSING:
+        if self._state == self.GamePhase.GUESSING:
             phase.append('Guessing')
-        if self._state == self.States.VICTORY:
+        if self._state == self.GamePhase.VICTORY:
             phase.append('Victory')
             phase.append(self.make_example_player(self._winner))
         to_return['Phase'] = phase
@@ -409,7 +407,7 @@ class Card:
     picture: link
     pack_id: Pack.id
     """
-    __card_ids = {}
+    __card_ids: dict = {}
 
     def __init__(self, picture, pack_id):
         self._get_new_id()
@@ -427,7 +425,7 @@ class Pack:
     name: string
     description: string
     """
-    __pack_ids = {}
+    __pack_ids: Dict[int, Any] = {}
 
     def __init__(self, name, description):
         self._get_new_id()

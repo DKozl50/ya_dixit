@@ -4,7 +4,7 @@ open Browser
 open Thoth.Json
 
 let private socket =
-    WebSocket.Create("wss://ya-dixit.herokuapp.com/socket")
+    WebSocket.Create("ws://localhost:5000/socket")
 
 let sendJson (json: string) = socket.send (json)
 
