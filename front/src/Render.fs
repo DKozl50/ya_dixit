@@ -11,4 +11,4 @@ let render model dispatch =
     match model with
     | ModelState.Lobby -> Render.Lobby.renderLobby dispatch
     | ModelState.Connecting -> renderConnecting dispatch
-    | ModelState.Room (id, s) -> Render.Room.renderRoom (id, s) dispatch
+    | ModelState.Room (id, state) -> Render.Room.renderRoom id state dispatch

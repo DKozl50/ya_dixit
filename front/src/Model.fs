@@ -4,7 +4,6 @@ module Model
 type PlayerRole =
     | Storyteller
     | Listener
-    | Spectator
 
 type Player =
     { Name: string
@@ -19,9 +18,11 @@ type GamePhase =
     | Matching
     | Guessing
     | Interlude
-    | Victory of Player
+    | Victory
 
 type CardID = string
+
+type GameID = string
 
 type CardOptionalInfo = { Owner: Player; Voters: Player list }
 
@@ -49,7 +50,7 @@ type ModelState =
 [<RequireQualifiedAccess>]
 type UserMessage =
     | CreateRoom of nickname: string
-    | JoinRoom of id: string * nickname: string
+    | JoinRoom of id: GameID * nickname: string
     | LeaveRoom
     | SelectCard of id: CardID
     | TellStory of story: string
@@ -58,7 +59,7 @@ type UserMessage =
 [<RequireQualifiedAccess>]
 type ServerMessage =
     | FailConnect
-    | RoomConnect of id: string * state: GameState
+    | RoomConnect of id: GameID * state: GameState
     | RoomUpdate of newState: GameState
 
 [<RequireQualifiedAccess>]

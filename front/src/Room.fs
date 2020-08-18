@@ -5,21 +5,73 @@ open Feliz.Bulma
 open Feliz.Bulma.Operators
 open Model
 
-type private CardOptions =
+let private imgSrcByID (id: CardID) = "/img/" + id + ".jpg"
+
+// Unfortunately, Fable.React.FunctionComponent requires a single record argument
+// Expect lots of boilerplate for that reason
+
+type private TotalState =
+    { ID: string
+      State: GameState
+      Dispatch: Msg -> unit }
+
+    member this.Client = this.State.Client
+    member this.Hand = this.State.Hand
+    member this.Phase = this.State.Phase
+    member this.Opponents = this.State.Opponents
+    member this.Table = this.State.Table
+    member this.MoveAvailable = this.Client.MoveAvailable
+    member this.CardSelected = this.Hand.SelectedCard.IsSome
+
+    member this.IsStoryteller =
+        this.Client.Role = PlayerRole.Storyteller
+
+    member this.IsListener = this.Client.Role = PlayerRole.Listener
+
+    member this.HandSelectable =
+        this.MoveAvailable
+        && ((this.IsStoryteller
+             && this.Phase = GamePhase.Storytelling)
+            || (this.IsListener && this.Phase = GamePhase.Matching))
+
+    member this.TableSelectable =
+        this.MoveAvailable
+        && this.IsListener
+        && this.Phase = GamePhase.Guessing
+
+    member this.EndTurnClickable = this.MoveAvailable && this.CardSelected
+
+    member this.Storyteller =
+        if this.IsStoryteller then
+            this.Client
+        else
+            List.tryFind (fun p -> p.Role = PlayerRole.Storyteller) this.Opponents
+            |> Option.defaultValue this.Client
+
+type private CardArgs =
     { ID: CardID
       Highlighted: bool
       Selectable: bool
       Dispatch: Msg -> unit }
+    static member OfState'Hand (t: TotalState) (id: CardID) =
+        { ID = id
+          Highlighted = t.Hand.SelectedCard |> Option.contains id
+          Selectable = t.HandSelectable
+          Dispatch = t.Dispatch }
 
-let private imgSrcByID (id: CardID) = "/img/" + id + ".jpg"
+    static member OfState'Table (t: TotalState) (id: CardID) =
+        { ID = id
+          Highlighted = t.Hand.SelectedCard |> Option.contains id
+          Selectable = t.TableSelectable
+          Dispatch = t.Dispatch }
 
-let private cardComponent' (o: CardOptions) =
+let private cardComponent' (a: CardArgs) =
     Bulma.card [ prop.classes [ "game-card"
-                                if o.Highlighted then "chosen" ]
+                                if a.Highlighted then "chosen" ]
                  spacing.mx3
-                 prop.children [ Html.img [ prop.src (imgSrcByID o.ID) ] ]
-                 if o.Selectable
-                 then prop.onClick (fun _ -> o.Dispatch(Msg.UserMsg(UserMessage.SelectCard o.ID))) ]
+                 prop.children [ Html.img [ prop.src (imgSrcByID a.ID) ] ]
+                 if a.Selectable
+                 then prop.onClick (fun _ -> a.Dispatch(Msg.UserMsg(UserMessage.SelectCard a.ID))) ]
 
 let private cardComponent = React.functionComponent cardComponent'
 
@@ -49,28 +101,40 @@ let private playerCompoment' (p: Player) =
 
 let private playerCompoment = React.functionComponent playerCompoment'
 
-type private TurnButtonOptions =
+type private TurnButtonArgs =
     { Highlighted: bool
       Dispatch: Msg -> unit }
+    static member OfState(t: TotalState) =
+        { Highlighted = t.EndTurnClickable && t.IsListener
+          Dispatch = t.Dispatch }
 
-let private turnButtonComponent' (o: TurnButtonOptions) =
+let private turnButtonComponent' (a: TurnButtonArgs) =
     Html.a [ prop.classes [ "end-turn-btn"
-                            if o.Highlighted then "chosen" ]
-             prop.text "Закончить ход"
-             if o.Highlighted
-             then prop.onClick (fun _ -> UserMessage.EndTurn |> Msg.UserMsg |> o.Dispatch) ]
+                            if a.Highlighted then "chosen" ]
+             prop.text (if a.Highlighted then "Закончить ход" else "Сделайте ход")
+             if a.Highlighted
+             then prop.onClick (fun _ -> UserMessage.EndTurn |> Msg.UserMsg |> a.Dispatch) ]
 
 let private turnButtonComponent =
     React.functionComponent turnButtonComponent'
 
-let private handComponent' (a: {| cards: Fable.React.ReactElement list |}) =
+type private HandArgs =
+    { Cards: Fable.React.ReactElement list }
+    static member OfState(t: TotalState) =
+        { Cards =
+              t.Hand.Cards
+              |> List.map (CardArgs.OfState'Hand t)
+              |> List.map cardComponent }
+
+
+let private handComponent' (a: HandArgs) =
     Bulma.card [ prop.className "hand"
                  prop.children
                      [ Bulma.cardContent [ spacing.px3
                                            prop.children
                                                [ Html.div [ prop.className
                                                                 "d-flex justify-content-between align-items-center"
-                                                            prop.children a.cards ] ] ] ] ]
+                                                            prop.children a.Cards ] ] ] ] ]
 
 let private handComponent = React.functionComponent handComponent'
 
@@ -84,12 +148,19 @@ let private settingsComponent' () =
 let private settingsComponent =
     React.functionComponent settingsComponent'
 
-let private playerListComponent' (a: {| players: Fable.React.ReactElement list |}) =
+type private PlayerListArgs =
+    { Players: ReactElement list }
+    static member OfState(t: TotalState) =
+        { Players =
+              (t.Client :: t.Opponents)
+              |> List.map playerCompoment }
+
+let private playerListComponent' (a: PlayerListArgs) =
     Bulma.card [ prop.className "player-list"
                  prop.children
                      [ Bulma.cardContent [ prop.className "d-flex flex-column"
                                            spacing.py3
-                                           prop.children a.players ] ] ]
+                                           prop.children a.Players ] ] ]
 
 let private playerListComponent =
     React.functionComponent playerListComponent'
@@ -113,16 +184,16 @@ let private storyInputField (clickable: bool) (dispatch: Msg -> unit) (story: Re
                                                                   then prop.onClick (fun _ ->
                                                                            tellStory story |> dispatch) ] ] ] ]
 
-type private StoryInputOptions =
+type private StoryInputArgs =
     { Clickable: bool
       Dispatch: Msg -> unit }
 
 let private storyInputComponent =
-    React.functionComponent (fun (o: StoryInputOptions) ->
+    React.functionComponent (fun (a: StoryInputArgs) ->
         let ref = React.useInputRef ()
-        storyInputField o.Clickable o.Dispatch ref)
+        storyInputField a.Clickable a.Dispatch ref)
 
-type private TimerOptions = { Phase: GamePhase; Player: Player }
+type private TimerArgs = { Phase: GamePhase; Player: Player }
 
 let private timerComponent' progress =
     let p' = max progress 360.
@@ -153,20 +224,20 @@ let private hasTimer =
     | _ -> true
 
 let private timerComponent =
-    React.functionComponent (fun (o: TimerOptions) ->
+    React.functionComponent (fun (a: TimerArgs) ->
         let (progress, setProgress) = React.useState (0.)
 
         let subscribeToInterval () =
             let subId =
-                Fable.Core.JS.setInterval (fun _ -> if hasTimer o.Phase then setProgress (progress + 1.)) 250
+                Fable.Core.JS.setInterval (fun _ -> if hasTimer a.Phase then setProgress (progress + 1.)) 250
 
             { new System.IDisposable with
                 member this.Dispose() = Fable.Core.JS.clearInterval (subId) }
 
-        React.useEffect (subscribeToInterval, [| box o.Phase |])
+        React.useEffect (subscribeToInterval, [| box a.Phase |])
         timerComponent' progress)
 
-type private StoryComponentOptions =
+type private StoryComponentArgs =
     { Player: Player
       Story: string option }
 
@@ -175,37 +246,46 @@ let private msgOfStoryO =
     | None -> "Is making up a story"
     | Some s -> sprintf "Tells a story: %s" s
 
-let private storyComponent' (o: StoryComponentOptions) =
+let private storyComponent' (a: StoryComponentArgs) =
     Bulma.levelItem [ spacing.ml5
                       prop.children
                           [ Bulma.container [ Bulma.title.h3 [ title.is3
-                                                               prop.text (o.Player.Name) ]
-                                              Html.p (msgOfStoryO o.Story) ] ] ]
+                                                               prop.text (a.Player.Name) ]
+                                              Html.p (msgOfStoryO a.Story) ] ] ]
 
 let private storyComponent = React.functionComponent storyComponent'
 
-type private HeadBarOptions =
+type private HeadBarArgs =
     { Phase: GamePhase
       Storyteller: Player
       ActiveInput: bool
       ActiveButton: bool
       Story: string option
       Dispatch: Msg -> unit }
+    static member OfState(t: TotalState) =
+        { Phase = t.Phase
+          Storyteller = t.Storyteller
+          ActiveInput =
+              t.IsStoryteller
+              && t.Phase = GamePhase.Storytelling
+          ActiveButton = t.EndTurnClickable
+          Story = t.Table.Story
+          Dispatch = t.Dispatch }
 
-let private headBarComponent' (o: HeadBarOptions) =
+let private headBarComponent' (a: HeadBarArgs) =
     Bulma.card [ prop.className "top"
                  prop.children
                      [ Bulma.cardContent [ Bulma.level [ timerComponent
-                                                             { Phase = o.Phase
-                                                               Player = o.Storyteller }
+                                                             { Phase = a.Phase
+                                                               Player = a.Storyteller }
                                                          storyComponent
-                                                             { Story = o.Story
-                                                               Player = o.Storyteller }
+                                                             { Story = a.Story
+                                                               Player = a.Storyteller }
                                                          Bulma.levelRight [] ]
-                                           if o.ActiveInput then
+                                           if a.ActiveInput then
                                                storyInputComponent
-                                                   { Clickable = o.ActiveButton
-                                                     Dispatch = o.Dispatch } ] ] ]
+                                                   { Clickable = a.ActiveButton
+                                                     Dispatch = a.Dispatch } ] ] ]
 
 let private headBarComponent =
     React.functionComponent headBarComponent'
@@ -218,83 +298,30 @@ let private exitButtonComponent =
                               style.right (length.px 10) ]
                  prop.onClick (fun _ -> a.Dispatch(Msg.UserMsg(UserMessage.LeaveRoom))) ])
 
-let tableComponent =
-    React.functionComponent (fun (a: {| cards: Fable.React.ReactElement list |}) -> a.cards)
+type private TableArgs =
+    { Cards: ReactElement list }
+    static member OfState(t: TotalState) =
+        { Cards =
+              t.Table.Cards
+              |> List.map fst
+              |> List.map (CardArgs.OfState'Table t)
+              |> List.map cardComponent }
 
-type private TotalState =
-    { ID: string
-      State: GameState
-      Dispatch: Msg -> unit }
+let private tableComponent =
+    React.functionComponent (fun (a: TableArgs) -> a.Cards)
 
 let private roomComponent =
-    React.functionComponent (fun (s: TotalState) ->
-        React.useEffectOnce (fun () -> printfn "%A" s.ID)
-        let moveA = s.State.Client.MoveAvailable
-        let cardSelected = s.State.Hand.SelectedCard.IsNone
-
-        let isStoryteller =
-            s.State.Client.Role = PlayerRole.Storyteller
-
-        let isListener =
-            s.State.Client.Role = PlayerRole.Listener
-
-        let phase = s.State.Phase
-
-        let handSelectable =
-            moveA
-            && ((isStoryteller && phase = GamePhase.Storytelling)
-                || (isListener && phase = GamePhase.Matching))
-
-        let tableSelectable =
-            moveA && isListener && phase = GamePhase.Guessing
-
-        let btnClickable = moveA && cardSelected
-
-        let storyteller =
-            if isStoryteller then
-                s.State.Client
-            else
-                List.tryFind (fun p -> p.Role = PlayerRole.Storyteller) s.State.Opponents
-                |> Option.defaultValue s.State.Client
-
-        let handMap id =
-            { ID = id
-              Highlighted = Option.exists ((=) id) s.State.Hand.SelectedCard
-              Selectable = handSelectable
-              Dispatch = s.Dispatch }
-
-        let tableMap id =
-            { ID = id
-              Highlighted = Option.exists ((=) id) s.State.Hand.SelectedCard
-              Selectable = tableSelectable
-              Dispatch = s.Dispatch }
-
-        [ headBarComponent
-            { Phase = phase
-              Storyteller = storyteller
-              ActiveInput = isStoryteller && phase = GamePhase.Storytelling
-              ActiveButton = btnClickable
-              Story = s.State.Table.Story
-              Dispatch = s.Dispatch }
-          playerListComponent {| players = s.State.Opponents |> List.map playerCompoment |}
-          turnButtonComponent
-              { Highlighted = btnClickable && isListener
-                Dispatch = s.Dispatch }
-          exitButtonComponent {| Dispatch = s.Dispatch |}
+    React.functionComponent (fun (t: TotalState) ->
+        React.useEffectOnce (fun () -> printfn "%A" t.ID)
+        [ headBarComponent (HeadBarArgs.OfState t)
+          playerListComponent (PlayerListArgs.OfState t)
+          turnButtonComponent (TurnButtonArgs.OfState t)
+          exitButtonComponent {| Dispatch = t.Dispatch |}
           settingsComponent ()
-          handComponent
-              {| cards =
-                     s.State.Hand.Cards
-                     |> List.map handMap
-                     |> List.map cardComponent |}
-          tableComponent
-              {| cards =
-                     s.State.Table.Cards
-                     |> List.map fst
-                     |> List.map tableMap
-                     |> List.map cardComponent |} ])
+          handComponent (HandArgs.OfState t)
+          tableComponent (TableArgs.OfState t) ])
 
-let renderRoom (id: string, state: GameState) (dispatch: Msg -> unit) =
+let renderRoom (id: string) (state: GameState) (dispatch: Msg -> unit) =
     roomComponent
         { State = state
           ID = id
