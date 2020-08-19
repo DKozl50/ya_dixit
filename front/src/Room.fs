@@ -75,7 +75,7 @@ let private cardComponent' (a: CardArgs) =
 
 let private cardComponent = React.functionComponent cardComponent'
 
-let playerSvg (moveAvailable: bool) =
+let private playerSvg (moveAvailable: bool) =
     Html.svg [ prop.style [ style.width (length.px 64)
                             style.height (length.px 64)
                             style.position.absolute
@@ -88,7 +88,7 @@ let playerSvg (moveAvailable: bool) =
                                    prop.strokeWidth 4
                                    prop.stroke (if moveAvailable then "#33EE11" else "transparent") ] ] ]
 
-let playerAviPlaceholder =
+let private playerAviPlaceholder =
     "https://bulma.io/images/placeholders/128x128.png"
 
 let private playerCompoment' (p: Player) =
@@ -312,7 +312,7 @@ let private tableComponent =
 
 let private roomComponent =
     React.functionComponent (fun (t: TotalState) ->
-        React.useEffectOnce (fun () -> printfn "%A" t.ID)
+        React.useEffectOnce (fun () -> printfn "Room id:\n%A" t.ID)
         [ headBarComponent (HeadBarArgs.OfState t)
           playerListComponent (PlayerListArgs.OfState t)
           turnButtonComponent (TurnButtonArgs.OfState t)
