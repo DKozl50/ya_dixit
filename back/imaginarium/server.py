@@ -74,7 +74,7 @@ class Lobby(object):
         for data in self.__iter_data():
             ws: websocket.WebSocket
             for ws in self.clients:
-                spawn(self.send(ws, data))
+                spawn(self.send, ws, data)
 
     def start(self) -> None:
         """Maintains Redis subscription in the background."""
@@ -138,7 +138,7 @@ class GameBackend(object):
             game.make_current_game_state(player)
         ])
         logger.info(u'Sending message: {}'.format(data))
-        spawn(self.send(ws, data))
+        spawn(self.send, ws, data)
 
     def update_all(self) -> None:
         for player in self.game.players:
@@ -153,6 +153,7 @@ class GameBackend(object):
         game = self.game
         cur_player = game.get_cur_player()
         cur_phase = game.get_state()
+
         if cur_phase == Game.GamePhase.INTERLUDE:
             return
         if cur_phase == Game.GamePhase.WAITING:
@@ -165,7 +166,6 @@ class GameBackend(object):
             game.make_bet(player, card_id)
         if cur_phase == Game.GamePhase.STORYTELLING and player == cur_player:
             game.add_lead_card(card_id)
-        self.update(ws)
 
     def tell_story(self, ws: websocket.WebSocket, story: str) -> None:
         player = ws_to_player[ws]
@@ -177,7 +177,7 @@ class GameBackend(object):
         if cur_player != player:
             return
         game.start_turn(story)
-        self.update(ws)
+        self.update_all()
 
     def end_turn(self, ws: websocket.WebSocket) -> None:
         player = ws_to_player[ws]
@@ -229,7 +229,6 @@ def create_room(ws):
         return
     game_backend = GameBackend()
     game_backend.start()
-    GameBackend.backend[ws] = game_backend
     game = game_backend.game
     main_lobby.backends[game.id] = game_backend
     try:
@@ -256,12 +255,12 @@ def join_room(ws, game):
     main_lobby.unregister(ws)
     game.add_player(ws_to_player[ws])
     ws_to_player[ws].current_game = game
-
     mas = []
     mas.append('RoomConnect')
     mas.append(str(game.id))
     mas.append(game.make_current_game_state(ws_to_player[ws]))
     game_backend = main_lobby.backends[game.id]
+    GameBackend.backend[ws] = game_backend
     game_backend.register(ws)
     data = json.dumps(mas)
     redis.publish(game.id, data)

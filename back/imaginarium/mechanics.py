@@ -153,6 +153,7 @@ class Game:
         self._current_association = association
         for player in self.players:
             self._turn_ended[player] = False
+            logger.info(f"{player.name}'s hands: {self._hands[player.id]}")
         self._bets = dict()
         self._current_table = {self._lead_card: self._current_player}
         self._hands[self._current_player].remove(self._lead_card)
