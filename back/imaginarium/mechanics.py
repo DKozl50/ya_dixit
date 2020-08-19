@@ -120,6 +120,7 @@ class Game:
     def remove_player(self, player):
         """Removes player from game setting score as did_not_finish"""
         self.players.remove(player)
+        player.current_game = None
         if self._state != Game.GamePhase.WAITING:
             self._turn %= len(self.players)
             self._current_player = self.players[self._turn]

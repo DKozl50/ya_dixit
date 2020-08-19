@@ -335,5 +335,5 @@ main_lobby = Lobby()
 ws_to_player: Dict[websocket.WebSocket,
                    Player] = {}  # web_socket -> Player
 player_to_ws: Dict[Player, websocket.WebSocket] = {}  # player_id -> web_socket
-#server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+# server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
 # server.serve_forever()
