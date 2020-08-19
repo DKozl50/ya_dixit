@@ -123,8 +123,8 @@ class GameBackend(object):
         Automatically discards invalid connections."""
         try:
             ws.send(data)
-        except Exception:
-            logger.info(f'Player {ws} disconnect from game')
+        except Exception as e:
+            logger.info(f'Player {ws} disconnect from game with error {e}')
             self.unregister(ws)
 
     def update(self, ws: websocket.WebSocket) -> None:
@@ -193,8 +193,9 @@ class GameBackend(object):
             if game.all_turns_ended():
                 game.valuate_guesses()
                 redis.publish(game.id, "UpdateAll")
-                game.end_turn()
                 time.sleep(10)
+                game.end_turn()
+                redis.publish(game.id, "UpdateAll")
                 tmp = game.finished()
                 if tmp is not None:
                     game.end_game(tmp)

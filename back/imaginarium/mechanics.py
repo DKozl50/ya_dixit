@@ -226,15 +226,17 @@ class Game:
                 break
         return ok
 
-    def make_bet(self, player, card):
+    def make_bet(self, player, card_id):
         # player isn't a storyteller
+        card = Card.card_ids[card_id]
         if self._turn_ended[player] is True:
             return
         if card in self._hands[player]:
             self._bets[player] = card
 
-    def make_guess(self, player, card):
+    def make_guess(self, player, card_id):
         # player isn't a storyteller
+        card = Card.card_ids[card_id]
         if self._turn_ended[player] is True:
             return
         if card in self._current_table:
@@ -257,10 +259,12 @@ class Game:
         # clear table
         for card in self._current_table.keys():
             self._cards.append(card)
+        self._current_table = dict()
 
         # deal cards
         for player in self.players:
             self._deal_hand(player)
+        self._story = None
         self._current_player = self.players[self._turn]
         self._current_association = None
         self._lead_card = None
@@ -314,7 +318,7 @@ class Game:
     def _deal_hand(self, target):
         """Fills hand until it's full."""
         needed = 6 - len(self._hands[target])
-        self._hands[target] = self._cards[:needed]
+        self._hands[target] += self._cards[:needed]
         self._cards = self._cards[needed:]
 
     def make_example_player(self, player):
@@ -351,12 +355,12 @@ class Game:
         player_hand['Cards'] = hand
         if self._state == self.GamePhase.MATCHING:
             if player in self._bets:
-                player_hand['SelectedCard'] = self._bets[player]
+                player_hand['SelectedCard'] = str(self._bets[player].id)
             else:
                 player_hand['SelectedCard'] = None
         elif self._state == self.GamePhase.GUESSING:
             if player in self._guesses:
-                player_hand['SelectedCard'] = self._guesses[player]
+                player_hand['SelectedCard'] = str(self._guesses[player].id)
             else:
                 player_hand['SelectedCard'] = None
         else:
