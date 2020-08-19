@@ -1,14 +1,16 @@
+import logging
+import redis
+import time
+import json
+from geventwebsocket import websocket
+from geventwebsocket.handler import WebSocketHandler
 from mechanics import Player, Game, Card, Pack
 from typing import Any, Dict, Optional, Union
 from flask import Flask, redirect, url_for
 from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
-from geventwebsocket.handler import WebSocketHandler
-from geventwebsocket import websocket
-import json
-import time
-import redis
-import logging
+from gevent import monkey
+monkey.patch_all()
 
 app = Flask(__name__, static_folder='../../front/deploy')
 sockets = Sockets(app)
@@ -72,7 +74,7 @@ class Lobby(object):
         for data in self.__iter_data():
             ws: websocket.WebSocket
             for ws in self.clients:
-                self.send(ws, data)
+                spawn(self.send(ws, data))
 
     def start(self) -> None:
         """Maintains Redis subscription in the background."""
@@ -136,7 +138,7 @@ class GameBackend(object):
             game.make_current_game_state(player)
         ])
         logger.info(u'Sending message: {}'.format(data))
-        self.send(ws, data)
+        spawn(self.send(ws, data))
 
     def update_all(self) -> None:
         for player in self.game.players:
@@ -213,7 +215,7 @@ class GameBackend(object):
                 self.update_all()
             else:
                 for client in self.clients:
-                    self.send(client, data)
+                    spawn(self.send(client, data))
 
     def start(self):
         """Maintains Redis subscription in the background."""
@@ -335,5 +337,5 @@ main_lobby = Lobby()
 ws_to_player: Dict[websocket.WebSocket,
                    Player] = {}  # web_socket -> Player
 player_to_ws: Dict[Player, websocket.WebSocket] = {}  # player_id -> web_socket
-# server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
-# server.serve_forever()
+server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+server.serve_forever()
