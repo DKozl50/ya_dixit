@@ -116,8 +116,6 @@ class Game:
             self.result[player] = 0
         if self._state != self.GamePhase.WAITING:
             self._deal_hand(player)
-        if len(self.players) >= self._num_players_to_start:
-            self.start_game()
 
     def remove_player(self, player):
         """Removes player from game setting score as did_not_finish"""
@@ -291,7 +289,8 @@ class Game:
         return self._current_player
 
     def get_hand(self, target):
-        return self._hands[target]
+        l = [str(card.id) for card in self._hands[target]]
+        return l
 
     def _fix_packs(self):
         """Fixes packs choice.
@@ -342,7 +341,8 @@ class Game:
                 opponents.append(self.make_example_player(other_player))
         to_return['Opponents'] = opponents
         player_hand = dict()
-        player_hand['Cards'] = self.get_hand(player)
+        hand = self.get_hand(player)
+        player_hand['Cards'] = hand
         if self._state == self.GamePhase.MATCHING:
             if player in self._bets:
                 player_hand['SelectedCard'] = self._bets[player]
@@ -387,6 +387,7 @@ class Game:
             phase.append('Victory')
             phase.append(self.make_example_player(self._winner))
         to_return['Phase'] = phase
+        print(to_return)
         return to_return
 
     # TODO add Database
@@ -416,6 +417,7 @@ class Card:
         self.pack_id = pack_id
 
     # TODO add Database
+
     def _get_new_id(self):
         self.id = uuid1().time_low
         Card.__card_ids[self.id] = self
@@ -440,4 +442,4 @@ class Pack:
 
 
 def _packs_to_cards(packs):  # TODO add Database
-    return []
+    return [Card('HUY', 1) for i in range(400)]

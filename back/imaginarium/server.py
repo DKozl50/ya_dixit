@@ -5,7 +5,6 @@ from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
 from geventwebsocket.handler import WebSocketHandler
 from geventwebsocket import websocket
-import os
 import json
 import time
 import redis
@@ -20,53 +19,62 @@ class Lobby(object):
     """Interface for registering and updating WebSocket clients."""
 
     def __init__(self):
-        self.games = list()
+        # game_id -> GameBackend
+        self.backends: Dict[int, GameBackend] = dict()
         self.clients = list()
         self.pubsub = redis.pubsub()
         self.pubsub.subscribe(REDIS_CHAN)
 
-    def __iter_data(self):
-        message: object
+    def __iter_data(self) -> Any:
+        message: Dict[str, Any]
         for message in self.pubsub.listen():
-            print(type(message))
-            print(message)
             data = message.get('data')
             if message['type'] == 'message':
                 logger.info(u'Sending message: {}'.format(data))
                 yield data
 
-    def add_game(self, game):
-        self.games.append(game)
-
-    def register(self, client):
+    def register(self, ws: websocket.WebSocket) -> None:
         """Register a WebSocket connection for Redis updates."""
-        self.clients.append(client)
+        self.clients.append(ws)
 
-    def unregister(self, client):
+    def unregister(self, ws: websocket.WebSocket) -> None:
         """Unregister a WebSocket connection"""
-        self.clients.remove(client)
+        self.clients.remove(ws)
 
-    def process_message(self, ws, message):
+    def process_message(self, ws: websocket.WebSocket, message: Union) -> None:
         """Process a message from a client"""
         if message[0] == "CreateRoom":
-            CreateRoom(ws)
+            ws_to_player[ws].name = message[1]
+            create_room(ws)
+        elif message[0] == "JoinRoom":
+            game_backend = main_lobby.backends.get(int(message[1]))
+            if game_backend is None:
+                fail_connect(ws)
+                return
+            game = game_backend.game
+            ws_to_player[ws].name = message[2]
+            join_room(ws, game)
+            if len(game.players) >= game._num_players_to_start:
+                game_backend.start_game()
 
-    def send(self, client, data):
+    def send(self, ws: websocket.WebSocket, data: str) -> None:
         """Send given data to the registered client.
         Automatically discards invalid connections."""
         try:
-            client.send(data)
+            ws.send(data)
         except Exception:
-            logger.info(f'Player {client} disconnect from lobby')
-            self.unregister(client)
+            logger.info(f'Player {ws} disconnected from lobby')
+            self.unregister(ws)
 
-    def run(self):
+    def run(self) -> None:
         """Listens for new messages in Redis, and sends them to clients."""
+        data: str
         for data in self.__iter_data():
-            for client in self.clients:
-                spawn(self.send, client, data)
+            ws: websocket.WebSocket
+            for ws in self.clients:
+                self.send(ws, data)
 
-    def start(self):
+    def start(self) -> None:
         """Maintains Redis subscription in the background."""
         spawn(self.run)
 
@@ -84,73 +92,148 @@ class GameBackend(object):
     def __iter_data(self):
         for message in self.pubsub.listen():
             data = message.get('data')
+            print(message)
             if message['type'] == 'message':
+                data = data.decode("utf-8")
                 logger.info(u'Sending message: {}'.format(data))
                 yield data
 
-    def process_message(self, ws: websocket.WebSocket, message: Any):
-        player = ws_to_player[ws]
+    def process_message(self, ws: websocket.WebSocket, message: Union) -> None:
         if message[0] == "LeaveRoom":
             leave_room(ws)
         elif message[0] == "SelectCard":
-            SelectCard(ws, int(message[1]))
+            self.select_card(ws, int(message[1]))
         elif message[0] == "TellStory":
-            TellStory(ws, message[1])
+            self.tell_story(ws, message[1])
         elif message[0] == "EndTurn":
-            EndTurn(ws)
+            self.end_turn(ws)
 
-    def register(self, client):
+    def register(self, ws: websocket.WebSocket) -> None:
         """Register a WebSocket connection for Redis updates."""
-        self.clients.append(client)
+        self.clients.append(ws)
 
-    def unregister(self, client):
+    def unregister(self, ws: websocket.WebSocket) -> None:
         """Unregister a WebSocket connection"""
-        self.clients.remove(client)
+        self.clients.remove(ws)
 
-    def send(self, client, data):
+    def send(self, ws: websocket.WebSocket, data: str) -> None:
         """Send given data to the registered client.
         Automatically discards invalid connections."""
         try:
-            client.send(data)
+            ws.send(data)
         except Exception:
-            logger.info(f'Player {client} disconnect from game')
-            self.unregister(client)
+            logger.info(f'Player {ws} disconnect from game')
+            self.unregister(ws)
+
+    def update(self, ws: websocket.WebSocket) -> None:
+        player = ws_to_player[ws]
+        game = player.current_game
+        if game != self.game:
+            fail_connect(ws)
+            return
+        data = json.dumps([
+            "RoomUpdate",
+            game.make_current_game_state(player)
+        ])
+        logger.info(u'Sending message: {}'.format(data))
+        self.send(ws, data)
+
+    def update_all(self) -> None:
+        for player in self.game.players:
+            self.update(player_to_ws[player])
+
+    def start_game(self) -> None:
+        self.game.start_game()
+        redis.publish(self.game.id, "UpdateAll")
+
+    def select_card(self, ws: websocket.WebSocket, card_id: int) -> None:
+        player = ws_to_player[ws]
+        game = self.game
+        cur_player = game.get_cur_player()
+        cur_phase = game.get_state()
+        if cur_phase == Game.GamePhase.INTERLUDE:
+            return
+        if cur_phase == Game.GamePhase.WAITING:
+            return
+        if cur_phase == Game.GamePhase.VICTORY:
+            return
+        if cur_phase == Game.GamePhase.GUESSING and player != cur_player:
+            game.make_guess(player, card_id)
+        if cur_phase == Game.GamePhase.MATCHING and player != cur_player:
+            game.make_bet(player, card_id)
+        if cur_phase == Game.GamePhase.STORYTELLING and player == cur_player:
+            game.add_lead_card(card_id)
+        self.update(ws)
+
+    def tell_story(self, ws: websocket.WebSocket, story: str) -> None:
+        player = ws_to_player[ws]
+        game = self.game
+        cur_player = game.get_cur_player()
+        cur_state = game.get_state()
+        if cur_state != Game.GamePhase.STORYTELLING:
+            return
+        if cur_player != player:
+            return
+        game.start_turn(story)
+        self.update(ws)
+
+    def end_turn(self, ws: websocket.WebSocket) -> None:
+        player = ws_to_player[ws]
+        game = self.game
+        cur_player = game.get_cur_player()
+        cur_state = game.get_state()
+        if cur_state != Game.GamePhase.GUESSING \
+                and cur_state != Game.GamePhase.MATCHING:
+            return
+        if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
+            game.finish_turn(player)
+            if game.all_turns_ended():
+                game.valuate_guesses()
+                redis.publish(game.id, "UpdateAll")
+                game.end_turn()
+                time.sleep(10)
+                tmp = game.finished()
+                if tmp is not None:
+                    game.end_game(tmp)
+                    redis.publish(game.id, "UpdateAll")
+                    time.sleep(10)
+                    game.start_game()
+                    return
+        if cur_state == Game.GamePhase.MATCHING and player != cur_player:
+            game.finish_turn(player)
+            if game.all_turns_ended():
+                game.place_cards()
+                redis.publish(game.id, "UpdateAll")
+        self.update(ws)
 
     def run(self):
         """Listens for new messages in Redis, and sends them to clients."""
         for data in self.__iter_data():
-            for client in self.clients:
-                spawn(self.send, client, data)
+            if data == "UpdateAll":
+                self.update_all()
+            else:
+                for client in self.clients:
+                    self.send(client, data)
 
     def start(self):
         """Maintains Redis subscription in the background."""
         spawn(self.run)
 
 
-def CreateRoom(ws):
-    main_lobby.unregister(ws)
+def create_room(ws):
     player = ws_to_player[ws]
     if player.current_game is not None:
-        FailConnect(ws)
+        fail_connect(ws)
         return
     game_backend = GameBackend()
+    game_backend.start()
     GameBackend.backend[ws] = game_backend
     game = game_backend.game
-    main_lobby.add_game(game)
-    game.add_player(player)
-    RoomConnect(ws, game)
-
-
-def JoinRoom(user, game_id):
+    main_lobby.backends[game.id] = game_backend
     try:
-        main_lobby.unregister(user)
-        game = Game.get_game(game_id)
-        game.add_player(ws_to_player[user].id)
-        ws_to_player[user].add_game_to_archive(game_id)
-        RoomConnect(user, game_id)
+        join_room(ws, game)
     except Exception as error:
         logger.exception(f"Player can't join to game. {error}")
-        FailConnect(user)
 
 
 def leave_room(ws: websocket.WebSocket) -> None:
@@ -167,98 +250,26 @@ def leave_room(ws: websocket.WebSocket) -> None:
     main_lobby.register(ws)
 
 
-def SelectCard(ws: websocket.WebSocket, card_id: int) -> None:
-    player = ws_to_player[ws]
-    game = player.current_game
-    cur_player = game.get_cur_player()
-    cur_phase = game.get_phase()
-    if cur_phase == Game.GamePhase.INTERLUDE:
-        return
-    if cur_phase == Game.GamePhase.WAITING:
-        return
-    if cur_phase == Game.GamePhase.VICTORY:
-        return
-    if cur_phase == Game.GamePhase.GUESSING and player != cur_player:
-        game.make_guess(player, card_id)
-    if cur_phase == Game.GamePhase.MATCHING and player != cur_player:
-        game.make_bet(player, card_id)
-    if cur_phase == Game.GamePhase.STORYTELLING and player == cur_player:
-        game.add_lead_card(card_id)
-    RoomUpdate(ws)
+def join_room(ws, game):
+    main_lobby.unregister(ws)
+    game.add_player(ws_to_player[ws])
+    ws_to_player[ws].current_game = game
 
-
-def TellStory(ws: websocket.WebSocket, story: str) -> None:
-    player = ws_to_player[ws]
-    game = Game.get_game(player.current_game)
-    cur_player = game.get_cur_player()
-    cur_state = game.get_state()
-    if cur_state != Game.GamePhase.STORYTELLING:
-        return
-    if cur_player != player:
-        return
-    game.start_turn(story)
-    RoomUpdate(ws)
-
-
-def EndTurn(user):
-    player = ws_to_player[user]
-    game = Game.get_game(player.get_cur_game())
-    cur_player = game.get_cur_player()
-    cur_state = game.get_state()
-    if cur_state != Game.GamePhase.GUESSING \
-            and cur_state != Game.GamePhase.MATCHING:
-        return
-    if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
-        game.finish_turn(player)
-        if game.all_turns_ended():
-            game.valuate_guesses()
-            RoomUpdateAll(user)
-            game.end_turn()
-            time.sleep(10)
-            tmp = game.finished()
-            if tmp is not None:
-                game.end_game(tmp)
-                RoomUpdateAll(user)
-                time.sleep(10)
-                game.start_game()
-                return
-    if cur_state == Game.GamePhase.MATCHING and player.id != cur_player:
-        game.finish_turn(player)
-        if game.all_turns_ended():
-            game.place_cards()
-            RoomUpdateAll(user)
-    RoomUpdate(user)
-
-
-def RoomUpdateAll(user):
-    player = ws_to_player[user]
-    game = Game.get_game(player.get_cur_game())
-    for pl in game.players:
-        RoomUpdate(id_to_ws[pl])
-
-
-def RoomConnect(user, game):
     mas = []
     mas.append('RoomConnect')
     mas.append(str(game.id))
-    mas.append(game.make_current_game_state(ws_to_player[user]))
-    user.send(json.dumps(mas))
+    mas.append(game.make_current_game_state(ws_to_player[ws]))
+    game_backend = main_lobby.backends[game.id]
+    game_backend.register(ws)
+    data = json.dumps(mas)
+    redis.publish(game.id, data)
 
 
 def game_by_ws(ws: websocket.WebSocket) -> Optional[GameBackend]:
     return GameBackend.backend.get(ws)
 
 
-def RoomUpdate(user):
-    mas = []
-    player = ws_to_player[user]
-    game = Game.get_game(player.get_cur_game())
-    mas.append('RoomUpdate')
-    mas.append(game.make_current_game_state(ws_to_player[user].id))
-    user.send(json.dumps(mas))
-
-
-def FailConnect(user):
+def fail_connect(user):
     user.send('"FailConnect"')
 
 
@@ -288,18 +299,15 @@ def route_message(ws: websocket.WebSocket, message: Any):
 
 @sockets.route("/socket")
 def socket(ws):
-    print("FUCK")
     main_lobby.register(ws)
     player = Player("noname")
     ws_to_player[ws] = player
-    id_to_ws[player.id] = ws
+    player_to_ws[player] = ws
 
     while not ws.closed:
         gv_sleep(0.1)
         message = ws.receive()
         if message:
-            # processing requests from the client
-            redis.publish(REDIS_CHAN, message)
             route_message(ws, json.loads(message))
         else:
             main_lobby.unregister(ws)
@@ -310,28 +318,22 @@ def index():
     return redirect(url_for('static', filename='index.html'))
 
 
-if __name__ == '__main__':
-    """Constants"""
-    REDIS_CHAN = 'Secret?!'
-    """Create logger"""
-    logger = logging.getLogger('app')
-    logger.setLevel(logging.DEBUG)
-    file_handler = logging.FileHandler('app.log')
-    file_handler.setFormatter(logging.Formatter(
-        '%(filename)s[LINE:%(lineno)-3s]# '
-        '%(levelname)-8s [%(asctime)s]  %(message)s')
-    )
-    logger.addHandler(file_handler)
-    """Create Lobby and global dicts"""
-    main_lobby = Lobby()
-    # main_lobby.start()
-
-    ws_to_player: Dict[websocket.WebSocket,
-                       Player] = {}  # web_socket -> Player
-    id_to_ws: Dict[int, websocket.WebSocket] = {}  # player_id -> web_socket
-    """Start server"""
-    server = pywsgi.WSGIServer(
-        ('', os.environ.get("PORT", 5000)),
-        app, handler_class=WebSocketHandler
-    )
-    server.serve_forever()
+"""Constants"""
+REDIS_CHAN = 'Secret?!'
+"""Create logger"""
+logger = logging.getLogger('app')
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler('app.log')
+file_handler.setFormatter(logging.Formatter(
+    '%(filename)s[LINE:%(lineno)-3s]# '
+    '%(levelname)-8s [%(asctime)s]  %(message)s')
+)
+logger.addHandler(file_handler)
+"""Create Lobby and global dicts"""
+main_lobby = Lobby()
+# main_lobby.start()
+ws_to_player: Dict[websocket.WebSocket,
+                   Player] = {}  # web_socket -> Player
+player_to_ws: Dict[Player, websocket.WebSocket] = {}  # player_id -> web_socket
+#server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+# server.serve_forever()
