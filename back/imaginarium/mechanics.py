@@ -150,10 +150,14 @@ class Game:
         association: string
         card: Card.id
         """
+        logger.info(f"Game {self.id} is starting a turn")
+        logger.info(f"Game {self.id} players: {self.players}")
         self._current_association = association
         for player in self.players:
             self._turn_ended[player] = False
-            logger.info(f"{player.name}'s hands: {self._hands[player.id]}")
+            logger.info(f"{player.name}'s hands: {self._hands[player]}")
+        logger.info(f"Current player: {self._current_player.name}")
+        logger.info(f"Current lead card: {self._lead_card}")
         self._bets = dict()
         self._current_table = {self._lead_card: self._current_player}
         self._hands[self._current_player].remove(self._lead_card)
@@ -237,8 +241,8 @@ class Game:
             if self._current_table[card] != player:
                 self._guesses[player] = card
 
-    def add_lead_card(self, card):
-        self._lead_card = card
+    def add_lead_card(self, card_id: int):
+        self._lead_card = Card.card_ids[card_id]
 
     def end_turn(self):
         """Ends turn changing game.state, clearing internal variables
@@ -362,7 +366,7 @@ class Game:
         cards_on_table = []
         for card, player in self._current_table.items():
             mas = []
-            mas.append(card)
+            mas.append(str(card.id))
             if self._state == self.GamePhase.INTERLUDE:
                 tmp = dict()
                 tmp['Owner'] = self.make_example_player(player)
@@ -411,7 +415,7 @@ class Card:
     picture: link
     pack_id: Pack.id
     """
-    __card_ids: dict = {}
+    card_ids: Dict[int, Any] = {}
 
     def __init__(self, picture, pack_id):
         self._get_new_id()
@@ -422,7 +426,7 @@ class Card:
 
     def _get_new_id(self):
         self.id = uuid1().time_low
-        Card.__card_ids[self.id] = self
+        Card.card_ids[self.id] = self
 
 
 class Pack:

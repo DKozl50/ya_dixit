@@ -176,6 +176,7 @@ class GameBackend(object):
             return
         if cur_player != player:
             return
+        logger.info(f"Player {player.name} is telling a story")
         game.start_turn(story)
         self.update_all()
 
