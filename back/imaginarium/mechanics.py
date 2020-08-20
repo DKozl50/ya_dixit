@@ -2,6 +2,7 @@ from enum import Enum, auto
 from random import shuffle
 from typing import Any, Dict
 from uuid import uuid1
+from os import listdir
 import logging
 
 logger = logging.getLogger('app.mechanics')
@@ -87,7 +88,7 @@ class Game:
             'move_time': 60,  # in seconds
             'rule_set': self.RuleSet.IMAGINARIUM  # only IMAGINARIUM for now
         }
-        self._num_players_to_start = 3  # TODO game should be started by leader of the room
+        self.players_to_start = 3  # TODO game should be started by leader of the room
         self._bets = dict()
         self._guesses = dict()
         self._state = self.GamePhase.WAITING
@@ -243,7 +244,7 @@ class Game:
             if self._current_table[card] != player:
                 self._guesses[player] = card
 
-    def add_lead_card(self, card_id: int):
+    def add_lead_card(self, card_id: str):
         self._lead_card = Card.card_ids[card_id]
 
     def end_turn(self):
@@ -299,8 +300,7 @@ class Game:
         return self._current_player
 
     def get_hand(self, target):
-        l = [str(card.id) for card in self._hands[target]]
-        return l
+        return [str(card.id) for card in self._hands[target]]
 
     def _fix_packs(self):
         """Fixes packs choice.
@@ -369,16 +369,15 @@ class Game:
         table = dict()
         cards_on_table = []
         for card, player in self._current_table.items():
-            mas = []
-            mas.append(str(card.id))
+            request = [card.id]
             if self._state == self.GamePhase.INTERLUDE:
                 tmp = dict()
                 tmp['Owner'] = self.make_example_player(player)
                 tmp['Voters'] = self.get_votes(card)
-                mas.append(tmp)
+                request.append(tmp)
             else:
-                mas.append(None)
-            cards_on_table.append(mas)
+                request.append(None)
+            cards_on_table.append(request)
         table['Cards'] = cards_on_table
         table['Story'] = self._current_association
         to_return['Table'] = table
@@ -419,17 +418,20 @@ class Card:
     picture: link
     pack_id: Pack.id
     """
-    card_ids: Dict[int, Any] = {}
+    card_ids: Dict[str, Any] = {}
 
-    def __init__(self, picture, pack_id):
-        self._get_new_id()
+    def __init__(self, picture, pack_id, id=None):
+        self._get_new_id(id)
         self.picture = picture
         self.pack_id = pack_id
 
     # TODO add Database
 
-    def _get_new_id(self):
-        self.id = uuid1().time_low
+    def _get_new_id(self, id):
+        if id is not None:
+            self.id = id
+        else:
+            self.id = str(uuid1().time_low)
         Card.card_ids[self.id] = self
 
 
@@ -452,4 +454,7 @@ class Pack:
 
 
 def _packs_to_cards(packs):  # TODO add Database
-    return [Card('HUY', 1) for i in range(400)]
+    path = '..\\..\\front\\public\\img'
+    names = list(map(lambda name: name.replace('.jpg', ''), listdir(path)))
+    shuffle(names)
+    return [Card('picture', 1, name) for name in names[:200]]
