@@ -4,6 +4,7 @@ from timeit import default_timer
 import httplib2
 from hashlib import md5
 from re import compile, sub
+from random import shuffle
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Safari/537.36'}
 
@@ -44,7 +45,8 @@ def all_parse(URL):
         links.extend(pictures)
     print(f'Спарсили за {round(default_timer() - start, 2)}с.')
     save_links(links)
-    # save_images(links)
+    shuffle(links)
+    save_images(links[:500])
 
 
 def update_image(URL):
@@ -74,7 +76,7 @@ def save_images(links):
     h = httplib2.Http('.cache')
     for img in links:
         response, content = h.request(img)
-        out = open(f'Images\{md5(content).hexdigest()}.jpg', 'wb')
+        out = open(f'..\\..\\front\\public\\img\\{md5(content).hexdigest()}.jpg', 'wb')
         out.write(content)
         out.close()
     print(f'Сохранили все изображения за {round(default_timer() - start, 2)}с.')

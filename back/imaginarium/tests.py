@@ -24,7 +24,7 @@ class TestGame(unittest.TestCase):
         for player in self.game.players:
             c = self.game.get_hand(player)
             print(f'|-player {player} cards:-|' +
-                  ('<-leader' if player == self.game._current_player else ''))
+                  ('<-leader' if player == self.game.current_player else ''))
             print('|' + '|'.join(map(str, c)) + '|')
 
     def test_game_states(self):
