@@ -1,6 +1,5 @@
 import logging
 import redis
-import time
 import json
 from geventwebsocket import websocket
 from geventwebsocket.handler import WebSocketHandler
@@ -162,7 +161,7 @@ class GameBackend(object):
         game = self.game
         cur_player = game.get_cur_player()
         cur_phase = game.get_state()
-
+        logger.debug(f'{cur_phase}, {cur_player.id}')
         if cur_phase == Game.GamePhase.INTERLUDE:
             return
         if cur_phase == Game.GamePhase.WAITING:
@@ -194,26 +193,38 @@ class GameBackend(object):
         game = self.game
         cur_player = game.get_cur_player()
         cur_state = game.get_state()
+        logger.debug(f'end_turn from {ws}, status = {cur_state}')
         if cur_state != Game.GamePhase.GUESSING \
                 and cur_state != Game.GamePhase.MATCHING:
+            logger.debug(f'{player.id} try end turn for {cur_state}')
             return
         if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
             game.finish_turn(player)
+            assert game.turn_ended[player]
+            logger.debug(f'{player.id} end turn for {cur_state}, res = {game.all_turns_ended()}')
+            if not game.all_turns_ended():
+                for player in game.players:
+                    logger.debug(f'{player.id} is {game.turn_ended[player]}')
             if game.all_turns_ended():
+                logger.debug(f'{game.id} end round, showing results')
                 game.valuate_guesses()
                 redis.publish(game.id, "UpdateAll")
-                time.sleep(10)
+                gv_sleep(5)
+                logger.debug(f'{game.id} start new round')
                 game.end_turn()
                 redis.publish(game.id, "UpdateAll")
                 tmp = game.finished()
                 if tmp is not None:
+                    logger.debug(f'{game.id} game end')
                     game.end_game(tmp)
                     redis.publish(game.id, "UpdateAll")
-                    time.sleep(10)
+                    gv_sleep(5)
+                    logger.debug(f'{game.id} start new game')
                     game.start_game()
                     return
         if cur_state == Game.GamePhase.MATCHING and player != cur_player:
             game.finish_turn(player)
+            logger.debug(f'{player.id} is {game.turn_ended[player]} for matching')
             if game.all_turns_ended():
                 game.place_cards()
                 redis.publish(game.id, "UpdateAll")
