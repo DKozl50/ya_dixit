@@ -324,16 +324,6 @@ class Game:
         to_return['Name'] = player.name
         if self.current_player == player:
             to_return['Role'] = 'Storyteller'
-        elif self.state == self.GamePhase.GUESSING:
-            if self.turn_ended[player] is True and player not in self.guesses:
-                to_return['Role'] = 'Spectator'
-            else:
-                to_return['Role'] = 'Listener'
-        elif self.state == self.GamePhase.MATCHING:
-            if self.turn_ended[player] is True and player not in self.bets:
-                to_return['Role'] = 'Spectator'
-            else:
-                to_return['Role'] = 'Listener'
         else:
             to_return['Role'] = 'Listener'
         to_return['Score'] = self.result[player]
@@ -366,9 +356,9 @@ class Game:
         to_return['Hand'] = player_hand
         table = dict()
         cards_on_table = []
-        for card, player in self.current_table.items():
+        for card, other_player in self.current_table.items():
             request = [card.id]
-            if self.state == self.GamePhase.INTERLUDE:
+            if other_player == player:
                 tmp = dict()
                 tmp['Owner'] = self.make_example_player(player)
                 tmp['Voters'] = self.get_votes(card)
@@ -379,21 +369,18 @@ class Game:
         table['Cards'] = cards_on_table
         table['Story'] = self.current_association
         to_return['Table'] = table
-        phase = []
         if self.state == self.GamePhase.STORYTELLING:
-            phase.append('Storytelling')
+            to_return['Phase'] = 'Storytelling'
         if self.state == self.GamePhase.WAITING:
-            phase.append('Waiting')
+            to_return['Phase'] = 'Waiting'
         if self.state == self.GamePhase.MATCHING:
-            phase.append('Matching')
+            to_return['Phase'] = 'Matching'
         if self.state == self.GamePhase.INTERLUDE:
-            phase.append('Interlude')
+            to_return['Phase'] = 'Interlude'
         if self.state == self.GamePhase.GUESSING:
-            phase.append('Guessing')
+            to_return['Phase'] = 'Guessing'
         if self.state == self.GamePhase.VICTORY:
-            phase.append('Victory')
-            phase.append(self.make_example_player(self.winner))
-        to_return['Phase'] = phase
+            to_return['Phase'] = 'Victory'
         print(to_return)
         return to_return
 
