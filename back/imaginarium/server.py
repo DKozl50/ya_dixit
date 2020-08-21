@@ -56,7 +56,7 @@ class Lobby(object):
             game = game_backend.game
             ws_to_player[ws].name = message[2]
             join_room(ws, game)
-            if len(game.players) >= game.players_to_start:
+            if len(game.players) == game.players_to_start:
                 game_backend.start_game()
 
     def send(self, ws: websocket.WebSocket, data: str) -> None:
