@@ -358,7 +358,8 @@ class Game:
         cards_on_table = []
         for card, other_player in self.current_table.items():
             request = [card.id]
-            if other_player == player:
+            if (self.state == self.GamePhase.GUESSING and other_player == player) \
+                    or self.state == self.GamePhase.INTERLUDE:
                 tmp = dict()
                 tmp['Owner'] = self.make_example_player(player)
                 tmp['Voters'] = self.get_votes(card)
