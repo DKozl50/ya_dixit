@@ -23,6 +23,13 @@ type private TotalState =
     member this.MoveAvailable = this.Client.MoveAvailable
     member this.CardSelected = this.Hand.SelectedCard.IsSome
 
+    member this.CardDealt =
+        this.Table.Cards
+        |> List.tryFind (function
+            | _, Some x when x.Owner = this.Client -> true
+            | _ -> false)
+        |> Option.map fst
+
     member this.IsStoryteller =
         this.Client.Role = PlayerRole.Storyteller
 
@@ -62,7 +69,9 @@ type private CardArgs =
     static member OfState'Table (t: TotalState) (id: CardID) =
         { ID = id
           Highlighted = t.Hand.SelectedCard |> Option.contains id
-          Selectable = t.TableSelectable
+          Selectable =
+              t.TableSelectable
+              && not (Option.contains id t.CardDealt)
           Dispatch = t.Dispatch }
 
 let private cardComponent' (a: CardArgs) =
