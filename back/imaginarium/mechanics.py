@@ -176,6 +176,7 @@ class Game:
         self._shuffle_players()
         for player in self.players:
             self.turn_ended[player] = False
+            self.result[player] = 0
         for p in self.players:
             self._deal_hand(p)
         self.current_player = self.players[self.turn]
@@ -471,7 +472,7 @@ class Pack:
 
 
 def _packs_to_cards(packs):  # TODO add Database
-    path = 'front/public/img'
+    path = '..\\..\\front\\public\\img'
     names = list(map(lambda name: name.replace('.jpg', ''), listdir(path)))
     shuffle(names)
     return [Card('picture', 1, name) for name in names[:200]]

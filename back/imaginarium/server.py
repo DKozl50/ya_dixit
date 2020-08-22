@@ -226,6 +226,7 @@ class GameBackend(object):
                     gv_sleep(5)
                     logger.debug(f'{game.id} start new game')
                     game.start_game()
+                    self.update_all()
                     return
         if cur_state == Game.GamePhase.MATCHING and player != cur_player:
             game.finish_turn(player)
