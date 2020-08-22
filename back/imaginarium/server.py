@@ -153,7 +153,8 @@ class GameBackend(object):
 
     def start_game(self) -> None:
         self.game.start_game()
-        redis.publish(self.game.id, "UpdateAll")
+        self.update_all()
+        # redis.publish(self.game.id, "UpdateAll")
 
     def select_card(self, ws: websocket.WebSocket, card_id: str) -> None:
         player = ws_to_player[ws]
@@ -201,33 +202,39 @@ class GameBackend(object):
         if cur_state == Game.GamePhase.GUESSING and player.id != cur_player:
             game.finish_turn(player)
             assert game.turn_ended[player]
-            logger.debug(f'{player.id} end turn for {cur_state}, res = {game.all_turns_ended()}')
+            logger.debug(
+                f'{player.id} end turn for {cur_state}, res = {game.all_turns_ended()}')
             if not game.all_turns_ended():
                 for player in game.players:
                     logger.debug(f'{player.id} is {game.turn_ended[player]}')
             if game.all_turns_ended():
                 logger.debug(f'{game.id} end round, showing results')
                 game.valuate_guesses()
-                redis.publish(game.id, "UpdateAll")
+                self.update_all()
+                #redis.publish(game.id, "UpdateAll")
                 gv_sleep(5)
                 logger.debug(f'{game.id} start new round')
                 game.end_turn()
-                redis.publish(game.id, "UpdateAll")
+                self.update_all()
+                #redis.publish(game.id, "UpdateAll")
                 tmp = game.finished()
                 if tmp is not None:
                     logger.debug(f'{game.id} game end')
                     game.end_game(tmp)
-                    redis.publish(game.id, "UpdateAll")
+                    self.update_all()
+                    #redis.publish(game.id, "UpdateAll")
                     gv_sleep(5)
                     logger.debug(f'{game.id} start new game')
                     game.start_game()
                     return
         if cur_state == Game.GamePhase.MATCHING and player != cur_player:
             game.finish_turn(player)
-            logger.debug(f'{player.id} is {game.turn_ended[player]} for matching')
+            logger.debug(
+                f'{player.id} is {game.turn_ended[player]} for matching')
             if game.all_turns_ended():
                 game.place_cards()
-                redis.publish(game.id, "UpdateAll")
+                self.update_all()
+                #redis.publish(game.id, "UpdateAll")
         self.update(ws)
 
     def run(self):
@@ -265,10 +272,10 @@ def leave_room(ws: websocket.WebSocket) -> None:
     logger.debug(f'{player.id} try leave from {game_backend.game.id}')
     game_backend.unregister(ws)
     assert player.current_game is None
+    game_backend.update_all()
     if not game_backend:
         del game_backend
-    assert player in main_lobby.clients
-
+    assert ws not in main_lobby.clients
     main_lobby.register(ws)
 
 
@@ -280,8 +287,11 @@ def join_room(ws, game):
     game_backend = main_lobby.backends[game.id]
     GameBackend.backend[ws] = game_backend
     game_backend.register(ws)
-    data = json.dumps(['RoomConnect', str(game.id), game.make_current_game_state(ws_to_player[ws])])
-    redis.publish(game.id, data)
+    data = json.dumps(["RoomConnect", str(game.id),
+                       game.make_current_game_state(ws_to_player[ws])])
+    game_backend.send(ws, data)
+    game_backend.update_all()
+    # redis.publish(game.id, "UpdateAll")
 
 
 def game_by_ws(ws: websocket.WebSocket) -> Optional[GameBackend]:
