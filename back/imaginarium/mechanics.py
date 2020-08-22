@@ -123,11 +123,46 @@ class Game:
         self.players.remove(player)
         player.current_game = None
         if self.state != Game.GamePhase.WAITING:
-            self.turn %= len(self.players)
-            self.current_player = self.players[self.turn]
-            self._cards += self.hands[player]
-            self.hands[player] = []
-            self.result[player] = f'did_not_finish {self.result[player]}'
+            if player != self.current_player:
+                if self.state == Game.GamePhase.STORYTELLING:
+                    if self.players.index(player) < self.turn:
+                        self.turn -= 1
+                    self._cards += self.hands[player]
+                    self.hands[player] = []
+                    self.result[player] = f'did_not_finish {self.result[player]}'
+                elif self.state == Game.GamePhase.MATCHING and len(self.current_table) < len(self.players):
+                    if self.bets[player] is None:
+                        if self.players.index(player) < self.turn:
+                            self.turn -= 1
+                        self._cards += self.hands[player]
+                        self.hands[player] = []
+                        self.result[player] = f'did_not_finish {self.result[player]}'
+                    else:
+                        self.bets.pop(player)
+                        self._cards += self.hands[player]
+                        self.hands[player] = []
+                        self.result[player] = f'did_not_finish {self.result[player]}'
+                elif self.state == Game.GamePhase.GUESSING:
+                    # TODO 1.4 and 1.5
+                    pass
+            else:
+                if self.state == Game.GamePhase.STORYTELLING:
+                    # TODO 2.1
+                    self.turn %= len(self.players)
+                    self.current_player = self.players[self.turn]
+                    self._cards += self.hands[player]
+                    self.hands[player] = []
+                    self.result[player] = f'did_not_finish {self.result[player]}'
+                elif self.state == Game.GamePhase.MATCHING and len(self.current_table) < len(self.players):
+                    self.result[player] = f'did_not_finish {self.result[player]}'
+                    self.end_turn()
+                else:
+                    self.turn %= len(self.players)
+                    self.current_player = self.players[self.turn]
+                    self._cards += self.hands[player]
+                    self.hands[player] = []
+                    self.result[player] = f'did_not_finish {self.result[player]}'
+
         else:
             # removes from results as the game has not started
             self.result.pop(player)
@@ -436,7 +471,7 @@ class Pack:
 
 
 def _packs_to_cards(packs):  # TODO add Database
-    path = '..\\..\\front\\public\\img'
+    path = 'front/public/img'
     names = list(map(lambda name: name.replace('.jpg', ''), listdir(path)))
     shuffle(names)
     return [Card('picture', 1, name) for name in names[:200]]
