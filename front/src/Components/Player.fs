@@ -5,28 +5,23 @@ open Feliz.Bulma
 open Feliz.Bulma.Operators
 open Model
 
-let private playerSvg (moveAvailable: bool) =
-    Html.svg [ prop.style [ style.width (length.px 64)
-                            style.height (length.px 64)
-                            style.position.absolute
-                            style.top 0 ]
-               prop.children
-                   [ Html.circle [ prop.cx 32
-                                   prop.cy 32
-                                   prop.r 30
-                                   prop.custom ("fill", "transparent")
-                                   prop.strokeWidth 4
-                                   prop.stroke (if moveAvailable then "#33EE11" else "transparent") ] ] ]
-
 let private playerAviPlaceholder =
-    "https://bulma.io/images/placeholders/128x128.png"
+    "https://api.adorable.io/avatars/128/SphericalPotatoInVacuum.png"
+
+
 
 let private playerCompoment' (p: Player) =
-    Html.figure [ prop.className "image"
-                  ++ spacing.my3
-                  ++ image.is64x64
-                  prop.children [ playerSvg p.MoveAvailable
-                                  Html.img [ image.isRounded
-                                             prop.src playerAviPlaceholder ] ] ]
+    Html.div [ prop.className "user d-flex align-items-center"
+               prop.children [ Bulma.image [ image.is64x64 ++ spacing.mx3 ++ spacing.my3
+                                             prop.children
+                                                 [ Html.img [ prop.className "active-user" ++ image.isRounded
+                                                              prop.src playerAviPlaceholder ] ] ]
+                               Bulma.title.h1 [ prop.className "username"
+                                                ++ title.is6
+                                                ++ spacing.ml3
+                                                ++ spacing.mr5
+                                                prop.text p.Name ]
+                               Bulma.title.h1 [ prop.className "align-self-right" ++ title.is6
+                                                prop.text p.Score ] ] ]
 
 let playerCompoment = React.functionComponent playerCompoment'

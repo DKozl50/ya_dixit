@@ -28,10 +28,17 @@ type TotalState =
     member this.MoveAvailable = this.Client.MoveAvailable
     member this.CardSelected = this.Hand.SelectedCard.IsSome
 
-    member this.CardDealt =
+    member this.DealtCard =
         this.Table.Cards
         |> List.tryFind (function
             | _, Some x when x.Owner = this.Client -> true
+            | _ -> false)
+        |> Option.map fst
+
+    member this.CorrectCard =
+        this.Table.Cards
+        |> List.tryFind (function
+            | _, Some x when x.Owner.Role = PlayerRole.Storyteller -> true
             | _ -> false)
         |> Option.map fst
 
@@ -63,17 +70,24 @@ type TotalState =
 type CardArgs with
     static member OfState'Hand (t: TotalState) (id: CardID) =
         { ID = id
-          Highlighted = t.Hand.SelectedCard |> Option.contains id
+          Chosen = t.Hand.SelectedCard |> Option.contains id
+          Correct = false
           Selectable = t.HandSelectable
-          Dispatch = t.Dispatch }
+          Dispatch = t.Dispatch
+          OptionalInfo = None }
 
     static member OfState'Table (t: TotalState) (id: CardID) =
         { ID = id
-          Highlighted = t.Hand.SelectedCard |> Option.contains id
+          Chosen = t.Hand.SelectedCard |> Option.contains id
+          Correct = t.CorrectCard |> Option.contains id
           Selectable =
               t.TableSelectable
-              && not (Option.contains id t.CardDealt)
-          Dispatch = t.Dispatch }
+              && not (Option.contains id t.DealtCard)
+          Dispatch = t.Dispatch
+          OptionalInfo =
+              t.Table.Cards
+              |> List.tryFind (fst >> ((=) id))
+              |> Option.bind snd }
 
 type TurnButtonArgs with
     static member OfState(t: TotalState) =

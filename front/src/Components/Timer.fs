@@ -6,7 +6,7 @@ open Feliz.Bulma.Operators
 open Model
 
 let private playerAviPlaceholder =
-    "https://bulma.io/images/placeholders/128x128.png"
+    "https://api.adorable.io/avatars/128/SphericalPotatoInVacuum.png"
 
 type TimerArgs = { Phase: GamePhase; Player: Player }
 
