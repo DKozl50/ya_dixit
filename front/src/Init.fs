@@ -5,7 +5,7 @@ open Model
 
 let initState =
     let x =
-        Browser.Dom.document.getElementById("initialState").innerText
+        Browser.Dom.document.getElementById("initial-state").innerHTML
         |> Thoth.Json.Decode.Auto.fromString<ModelState>
 
     match x with
@@ -16,7 +16,7 @@ let initState =
 
 let initMessage =
     let x =
-        Browser.Dom.document.getElementById("initialMessage").innerText
+        Browser.Dom.document.getElementById("initial-message").innerHTML
         |> Thoth.Json.Decode.Auto.fromString<Msg>
 
     match x with
