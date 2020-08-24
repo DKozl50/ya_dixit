@@ -16,18 +16,18 @@ let private selectCard (id: CardID option) (state: GameState) =
 let private mapGameState (f: GameState -> GameState) (state: ModelState) =
     match state with
     | ModelState.Room (id, s) -> ModelState.Room(id, f s)
-    | _ ->
-        Printf.eprintfn "Warning: incorrect message recieved"
-        state
+    | _ -> state
 
 let private userUpdate (msg: UserMessage) (state: ModelState) =
-    Socket.sendObject msg
-    match msg with
-    | UserMessage.CreateRoom _ -> ModelState.Connecting, Cmd.none
-    | UserMessage.JoinRoom _ -> ModelState.Connecting, Cmd.none
-    | UserMessage.LeaveRoom -> ModelState.Lobby, Cmd.none
-    | UserMessage.SelectCard id -> mapGameState (selectCard (Some id)) state, Cmd.none
-    | _ -> mapGameState makeMove state, Cmd.none
+    let state' =
+        match msg with
+        | UserMessage.CreateRoom _ -> ModelState.Connecting
+        | UserMessage.JoinRoom _ -> ModelState.Connecting
+        | UserMessage.LeaveRoom -> ModelState.Lobby
+        | UserMessage.SelectCard id -> mapGameState (selectCard (Some id)) state
+        | _ -> mapGameState makeMove state
+
+    state', Socket.sendObjectCmd msg
 
 let private serverUpdate (msg: ServerMessage) (state: ModelState) =
     match msg with
