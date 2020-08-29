@@ -8,6 +8,6 @@ let private renderConnecting = Bulma.title.h1 "Connecting"
 
 let render model dispatch =
     match model with
-    | ModelState.Lobby -> Render.Lobby.renderLobby dispatch
+    | ModelState.Lobby -> Lobby.renderLobby dispatch
     | ModelState.Connecting -> renderConnecting
-    | ModelState.Room (id, state) -> Render.Room.renderRoom id state dispatch
+    | ModelState.Room (id, state) -> Room.renderRoom id state dispatch

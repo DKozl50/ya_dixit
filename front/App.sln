@@ -11,9 +11,7 @@ ProjectSection(SolutionItems) = preProject
 	NuGet.Config = NuGet.Config
 	package.json = package.json
 	README.md = README.md
-	splitter.tests.js = splitter.tests.js
 	webpack.config.js = webpack.config.js
-	webpack.tests.js = webpack.tests.js
 EndProjectSection
 EndProject
 Global

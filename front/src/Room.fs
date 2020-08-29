@@ -1,4 +1,4 @@
-module Render.Room
+module Room
 
 open Feliz
 open Model

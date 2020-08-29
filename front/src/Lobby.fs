@@ -1,4 +1,4 @@
-module Render.Lobby
+module Lobby
 
 open Feliz
 open Feliz.Bulma
