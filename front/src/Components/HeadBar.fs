@@ -2,7 +2,6 @@ module Components.HeadBar
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
 open Components.Story

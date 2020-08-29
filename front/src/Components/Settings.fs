@@ -2,8 +2,6 @@ module Components.Settings
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
-open Model
 
 let private settingsComponent' () =
     Bulma.card [ prop.className "settings-button"

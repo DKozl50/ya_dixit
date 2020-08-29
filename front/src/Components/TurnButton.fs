@@ -1,8 +1,6 @@
 module Components.TurnButton
 
 open Feliz
-open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
 type TurnButtonArgs =

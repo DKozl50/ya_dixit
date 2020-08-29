@@ -28,7 +28,7 @@ let private parseServerMessage (json: string): Result<Model.ServerMessage, strin
 let serverMessageSubscription (_: Model.ModelState) =
     let sub dispatch =
         let f (s: Types.MessageEvent) =
-            printfn "Message recieved:\n%A" (s.data.ToString())
+            printfn "Message received:\n%A" (s.data.ToString())
             match s.data.ToString() |> parseServerMessage with
             | Ok msg ->
                 printfn "Message successfully parsed:\n%A" msg

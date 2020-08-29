@@ -10,7 +10,7 @@ let private playerAviPlaceholder =
 
 
 
-let private playerCompoment' (p: Player) =
+let private playerComponent' (p: Player) =
     Html.div [ prop.className "user d-flex align-items-center"
                prop.children [ Bulma.image [ image.is64x64 ++ spacing.mx3 ++ spacing.my3
                                              prop.children
@@ -24,4 +24,4 @@ let private playerCompoment' (p: Player) =
                                Bulma.title.h1 [ prop.className "align-self-right" ++ title.is6
                                                 prop.text p.Score ] ] ]
 
-let playerCompoment = React.functionComponent playerCompoment'
+let playerComponent = React.functionComponent playerComponent'

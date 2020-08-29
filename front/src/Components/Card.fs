@@ -18,7 +18,7 @@ type CardArgs =
       OptionalInfo: CardOptionalInfo option
       Dispatch: Msg -> unit }
 
-let private blob (p: Player) =
+let private blob (_: Player) =
     Html.figure [ prop.className "image"
                   ++ spacing.mx1
                   ++ spacing.my1

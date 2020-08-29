@@ -2,7 +2,6 @@ module Components.StoryInput
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
 type private RefT = IRefValue<option<Browser.Types.HTMLInputElement>>

@@ -2,8 +2,6 @@ module Components.Hand
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
-open Model
 
 type HandArgs =
     { Cards: Fable.React.ReactElement list }

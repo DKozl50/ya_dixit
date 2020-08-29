@@ -2,7 +2,6 @@ module Components.LobbyInput
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
 type private RefT = IRefValue<option<Browser.Types.HTMLInputElement>>
@@ -52,7 +51,7 @@ let private lobbyInputControl dispatch (refName: RefT) (refID: RefT) =
                                       lobbyButtonControl dispatch refName refID ] ]
 
 
-let lobbyInputCompoment =
+let lobbyInputComponent =
     React.functionComponent (fun (wrap: {| dispatch: Elmish.Dispatch<Msg> |}) ->
         let refName = React.useInputRef ()
         let refID = React.useInputRef ()

@@ -2,8 +2,6 @@ module Render.Lobby
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
-open Model
 open Components.LobbyInput
 
 let private lobbyTitle =
@@ -17,4 +15,4 @@ let renderLobby dispatch =
         [ Bulma.cardContent [ spacing.px0
                               spacing.py0
                               prop.children [ lobbyTitle
-                                              lobbyInputCompoment {| dispatch = dispatch |} ] ] ]
+                                              lobbyInputComponent {| dispatch = dispatch |} ] ] ]

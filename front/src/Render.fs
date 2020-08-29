@@ -2,13 +2,12 @@ module Render
 
 open Feliz
 open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
-let private renderConnecting dispatch = Bulma.title.h1 "Connecting"
+let private renderConnecting = Bulma.title.h1 "Connecting"
 
 let render model dispatch =
     match model with
     | ModelState.Lobby -> Render.Lobby.renderLobby dispatch
-    | ModelState.Connecting -> renderConnecting dispatch
+    | ModelState.Connecting -> renderConnecting
     | ModelState.Room (id, state) -> Render.Room.renderRoom id state dispatch

@@ -3,7 +3,6 @@ module Components.PlayerList
 open Feliz
 open Feliz.Bulma
 open Feliz.Bulma.Operators
-open Model
 
 type PlayerListArgs = { Players: ReactElement list }
 

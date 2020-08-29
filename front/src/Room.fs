@@ -1,8 +1,6 @@
 module Render.Room
 
 open Feliz
-open Feliz.Bulma
-open Feliz.Bulma.Operators
 open Model
 
 open Components.Card
@@ -68,7 +66,7 @@ type TotalState =
             |> Option.defaultValue this.Client
 
 type CardArgs with
-    static member OfState'Hand (t: TotalState) (id: CardID) =
+    static member OfState_Hand (t: TotalState) (id: CardID) =
         { ID = id
           Chosen = t.Hand.SelectedCard |> Option.contains id
           Correct = false
@@ -76,7 +74,7 @@ type CardArgs with
           Dispatch = t.Dispatch
           OptionalInfo = None }
 
-    static member OfState'Table (t: TotalState) (id: CardID) =
+    static member OfState_Table (t: TotalState) (id: CardID) =
         { ID = id
           Chosen = t.Hand.SelectedCard |> Option.contains id
           Correct = t.CorrectCard |> Option.contains id
@@ -98,14 +96,14 @@ type HandArgs with
     static member OfState(t: TotalState): HandArgs =
         { Cards =
               t.Hand.Cards
-              |> List.map (CardArgs.OfState'Hand t)
+              |> List.map (CardArgs.OfState_Hand t)
               |> List.map cardComponent }
 
 type PlayerListArgs with
     static member OfState(t: TotalState) =
         { Players =
               (t.Client :: t.Opponents)
-              |> List.map playerCompoment }
+              |> List.map playerComponent }
 
 
 type HeadBarArgs with
@@ -124,7 +122,7 @@ type TableArgs with
         { Cards =
               t.Table.Cards
               |> List.map fst
-              |> List.map (CardArgs.OfState'Table t)
+              |> List.map (CardArgs.OfState_Table t)
               |> List.map cardComponent }
 
 let private roomComponent =
