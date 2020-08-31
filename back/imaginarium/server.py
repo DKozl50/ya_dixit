@@ -5,13 +5,13 @@ from geventwebsocket import websocket
 from geventwebsocket.handler import WebSocketHandler
 from mechanics import Player, Game
 from typing import Any, Dict, Optional, Union
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, render_template, url_for
 from flask_sockets import Sockets
 from gevent import pywsgi, spawn, sleep as gv_sleep
 from gevent import monkey
 monkey.patch_all()
 
-app = Flask(__name__, static_folder='../../front/deploy')
+app = Flask(__name__, static_folder='../../front/deploy', static_url_path='', template_folder='../../front/deploy')
 sockets = Sockets(app)
 redis = redis.from_url(url='redis://localhost:6379')
 
@@ -347,8 +347,15 @@ def socket(ws):
 
 @app.route('/')
 def index():
-    return redirect(url_for('static', filename='index.html'))
+    return render_template('index.html', initial_message="")
 
+def json_join_room_message(room_id: str) -> str:
+    # Player is the default username
+    return f'["UserMsg", ["JoinRoom", "{room_id}", "Player"]]'
+
+@app.route('/id/<room_id>')
+def join_room_page(room_id: str):
+    return render_template('index.html', initial_message=json_join_room_message(room_id))
 
 # Constants
 REDIS_CHAN = 'Secret?!'

@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <base href="/">
     <meta charset="UTF-8">
     <title>Imaginarium</title>
     <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
@@ -13,6 +14,7 @@
     <div id="feliz-app" class="fullheight d-flex justify-content-center flex-wrap align-items-center align-content-start"></div>
     <script type="application/json" id="initial-state"></script>
     <script type="application/json" id="initial-message">
+        {{ initial_message|safe }}
     </script>
 </body>
 
