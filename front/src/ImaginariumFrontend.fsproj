@@ -3,8 +3,10 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Util.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Socket.fs" />
+    <Compile Include="URL.fs" />
     <Compile Include="Init.fs" />
     <Compile Include="Update.fs" />
     <Compile Include="Components/LobbyInput.fs" />
@@ -26,6 +28,7 @@
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Fable.Browser.Url" Version="1.0.0" />
     <PackageReference Include="Fable.Browser.WebSocket" Version="1.0.0" />
     <PackageReference Include="Fable.Elmish.Debugger" Version="3.0.3" />
     <PackageReference Include="Fable.Elmish.HMR" Version="4.0.1" />

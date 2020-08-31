@@ -36,6 +36,13 @@ let private serverUpdate (msg: ServerMessage) (state: ModelState) =
     | ServerMessage.FailConnect -> ModelState.Lobby, Cmd.none
 
 let update (msg: Msg) (state: ModelState) =
-    match msg with
-    | Msg.UserMsg msg -> userUpdate msg state
-    | Msg.ServerMsg msg -> serverUpdate msg state
+    let state', cmd =
+        match msg with
+        | Msg.UserMsg msg -> userUpdate msg state
+        | Msg.ServerMsg msg -> serverUpdate msg state
+
+    let cmd' =
+        Cmd.batch [ cmd
+                    Url.cmdUpdateURL state' ]
+
+    state', cmd'
