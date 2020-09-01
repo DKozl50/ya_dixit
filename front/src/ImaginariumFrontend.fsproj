@@ -3,26 +3,16 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Util.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="Util.fs" />
     <Compile Include="Socket.fs" />
     <Compile Include="URL.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="Init.fs" />
     <Compile Include="Update.fs" />
-    <Compile Include="Components/LobbyInput.fs" />
-    <Compile Include="Components/Card.fs" />
-    <Compile Include="Components/Player.fs" />
-    <Compile Include="Components/TurnButton.fs" />
-    <Compile Include="Components/Hand.fs" />
-    <Compile Include="Components/Settings.fs" />
-    <Compile Include="Components/PlayerList.fs" />
-    <Compile Include="Components/StoryInput.fs" />
-    <Compile Include="Components/Timer.fs" />
-    <Compile Include="Components/Story.fs" />
-    <Compile Include="Components/HeadBar.fs" />
-    <Compile Include="Components/ExitButton.fs" />
-    <Compile Include="Components/Table.fs" />
     <Compile Include="Lobby.fs" />
+    <Compile Include="RoomElements.fs" />
+    <Compile Include="GameLogic.fs" />
     <Compile Include="Room.fs" />
     <Compile Include="Render.fs" />
     <Compile Include="Main.fs" />
@@ -37,5 +27,8 @@
     <PackageReference Include="Feliz.Bulma" Version="2.3.0" />
     <PackageReference Include="Thoth.Json" Version="4.1.0" />
     <PackageReference Include="Zanaptak.TypedCssClasses" Version="0.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="Components\**" />
   </ItemGroup>
 </Project>

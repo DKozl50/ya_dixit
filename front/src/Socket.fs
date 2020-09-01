@@ -2,6 +2,7 @@ module Socket
 
 open Browser
 open Thoth.Json
+open Util
 
 let private socket =
     WebSocket.Create("ws://localhost:5000/socket")
@@ -23,14 +24,16 @@ let sendJson (json: string) =
 let inline sendObject (x: 'T) = Encode.Auto.toString (4, x) |> sendJson
 
 let inline sendObjectCmd (x: 'T) =
-    Elmish.Cmd.OfFunc.attempt sendObject x raise
+    cmdExec
+    ^ fun _ -> sendObject x
 
-let private parseServerMessage (json: string): Result<Model.ServerMessage, string> = Decode.Auto.fromString (json)
+let private parseServerMessage json =
+    Decode.Auto.fromString<Model.ServerMessage> json
 
-let serverMessageSubscription (_: Model.ModelState) =
+let serverMessageSubscription _ =
     let sub dispatch =
         let f (s: Types.MessageEvent) =
-            printfn "Message received:\n%A" (s.data.ToString())
+            printfn "Message received:\n%O" s.data
             match s.data.ToString() |> parseServerMessage with
             | Ok msg ->
                 printfn "Message successfully parsed:\n%A" msg

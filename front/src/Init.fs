@@ -2,27 +2,30 @@ module Init
 
 open Elmish
 open Model
+open Util
 
-let initState =
-    let x =
-        Browser.Dom.document.getElementById("initial-state").innerHTML
-        |> Thoth.Json.Decode.Auto.fromString<ModelState>
+let initPage =
+    Browser.Dom.document.getElementById("initial-page").innerHTML
+    |> Thoth.Json.Decode.Auto.fromString<Page>
+    |> resultCollapse Page.Lobby
 
-    match x with
-    | Ok state -> state
-    | Error e ->
-        eprintfn "Error parsing initial state:\n%A" e
-        ModelState.Lobby
+let initCmd =
+    Browser.Dom.document.getElementById("initial-message").innerHTML
+    |> Thoth.Json.Decode.Auto.fromString<Msg>
+    |> resultMap Cmd.ofMsg
+    |> resultCollapse Cmd.none
 
-let initMessage =
-    let x =
-        Browser.Dom.document.getElementById("initial-message").innerHTML
-        |> Thoth.Json.Decode.Auto.fromString<Msg>
+let setDispatch: Cmd<Msg> =
+    [ fun dispatch -> globalDispatch <- dispatch ]
 
-    match x with
-    | Ok msg -> Cmd.ofMsg msg
-    | Error e ->
-        eprintfn "Error parsing initial message:\n%A" e
-        Cmd.none
+let initModel =
+    { Page = initPage
+      Storage = Storage.loadStorage () }
 
-let initModel () = initState, initMessage
+let sendInfo =
+    Cmd.ofMsg
+    ^ Msg.UserMsg
+    ^ UserMessage.UpdateInfo initModel.Storage
+
+let init () =
+    initModel, Cmd.batch [ initCmd; setDispatch; sendInfo ]

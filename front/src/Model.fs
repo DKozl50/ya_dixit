@@ -7,9 +7,27 @@ type PlayerRole =
 
 type Player =
     { Name: string
+      Avi: string
       Role: PlayerRole
       Score: int
       MoveAvailable: bool }
+
+type CardID = string
+
+type GameID = string
+
+type CardInfo =
+    { ID: CardID
+      Owner: Player option
+      Voters: Player list }
+
+type Hand =
+    { Cards: CardInfo list
+      SelectedCard: CardID option }
+
+type Table =
+    { Cards: CardInfo list
+      Story: string option }
 
 [<RequireQualifiedAccess>]
 type GamePhase =
@@ -20,49 +38,46 @@ type GamePhase =
     | Interlude
     | Victory
 
-type CardID = string
-
-type GameID = string
-
-type CardOptionalInfo = { Owner: Player; Voters: Player list }
-
-type Hand =
-    { Cards: CardID list
-      SelectedCard: CardID option }
-
-type Table =
-    { Cards: (CardID * CardOptionalInfo option) list
-      Story: string option }
-
-type GameState =
+type RoomState =
     { Client: Player
       Opponents: Player list
       Hand: Hand
       Table: Table
-      Phase: GamePhase }
+      Phase: GamePhase
+      ID: GameID }
 
 [<RequireQualifiedAccess>]
-type ModelState =
+type Page =
     | Lobby
     | Connecting
-    | Room of id: string * state: GameState
+    | GameRoom of RoomState
+
+type ClientData =
+    { Name: string option
+      Avi: string option }
+
+type ModelState = { Page: Page; Storage: ClientData }
 
 [<RequireQualifiedAccess>]
 type UserMessage =
-    | CreateRoom of nickname: string
-    | JoinRoom of id: GameID * nickname: string
+    | UpdateInfo of ClientData
+    | JoinRoom of GameID
     | LeaveRoom
-    | SelectCard of id: CardID
-    | TellStory of story: string
+    | SelectCard of CardID
+    | TellStory of string
     | EndTurn
 
 [<RequireQualifiedAccess>]
 type ServerMessage =
     | FailConnect
-    | RoomConnect of id: GameID * state: GameState
-    | RoomUpdate of newState: GameState
+    | RoomUpdate of RoomState
+
+[<RequireQualifiedAccess>]
+type InternalMessage = UpdateStorage of ClientData
 
 [<RequireQualifiedAccess>]
 type Msg =
     | UserMsg of UserMessage
     | ServerMsg of ServerMessage
+    | InternalMsg of InternalMessage
+

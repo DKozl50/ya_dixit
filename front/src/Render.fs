@@ -6,8 +6,8 @@ open Model
 
 let private renderConnecting = Bulma.title.h1 "Connecting"
 
-let render model dispatch =
-    match model with
-    | ModelState.Lobby -> Lobby.renderLobby dispatch
-    | ModelState.Connecting -> renderConnecting
-    | ModelState.Room (id, state) -> Room.renderRoom id state dispatch
+let render model _ =
+    match model.Page with
+    | Page.Lobby -> Lobby.renderLobby
+    | Page.Connecting -> renderConnecting
+    | Page.GameRoom state -> Room.renderRoom state

@@ -9,12 +9,12 @@ let setURLPathname pathname =
     url.pathname <- pathname
     history.pushState (obj (), null, url.toString ())
 
-let pathnameOfState =
+let pathnameOfPage =
     function
-    | ModelState.Connecting -> ""
-    | ModelState.Lobby _ -> ""
-    | ModelState.Room (id, _) -> "/id/" + id
+    | Page.Connecting -> ""
+    | Page.Lobby _ -> ""
+    | Page.GameRoom s -> "/id/" + s.ID
 
-let cmdUpdateURL state =
+let cmdUpdateURL page =
     cmdExec
-    ^ fun () -> setURLPathname ^ pathnameOfState state
+    ^ fun () -> setURLPathname ^ pathnameOfPage page
