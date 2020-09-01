@@ -9,8 +9,8 @@ type TurnButtonArgs =
 
 let private turnButtonComponent' (a: TurnButtonArgs) =
     Html.a [ prop.classes [ "end-turn-btn"
-                            if a.Highlighted then "chosen" ]
-             prop.text (if a.Highlighted then "Закончить ход" else "Сделайте ход")
+                            if a.Highlighted then "green" else "inactive" ]
+             prop.text "Закончить ход"
              if a.Highlighted
              then prop.onClick (fun _ -> UserMessage.EndTurn |> Msg.UserMsg |> a.Dispatch) ]
 

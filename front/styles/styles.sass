@@ -1,5 +1,13 @@
 @charset "utf-8"
 
+@function hsb($h-hsb, $s-hsb, $b-hsb, $a: 1)
+    @if $b-hsb == 0
+        @return hsla(0, 0, 0, $a)
+    @else
+        $l-hsl: ($b-hsb/2) * (2 - ($s-hsb/100))
+        $s-hsl: ($b-hsb * $s-hsb) / if($l-hsl < 50, $l-hsl * 2, 200 - $l-hsl * 2)
+        @return hsla($h-hsb, $s-hsl, $l-hsl, $a)
+
 html, body, .fullheight
     min-height: 100% !important
     height: 100%
@@ -82,7 +90,7 @@ body
         transition: all 0.2s
 
     & .chosen
-        bottom: 160px
+        bottom: 128px
 
 .settings-button
     position: absolute !important
@@ -119,6 +127,8 @@ body
         border-radius: inherit
     &:not(.correct):not(.chosen) .card-content:hover
         box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    .chosen
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
     & .card-content img
         height: 100%
         object-fit: cover
@@ -147,8 +157,6 @@ body
         height: 2.333rem
         z-index: 3
 
-.user
-
 .active-user
     box-shadow: 0 0 0 0.25rem #33ee11
 
@@ -166,35 +174,61 @@ body
     box-shadow: 0 0 16px 8px rgba(0, 255, 0, 0.7) !important
 
 .chosen
-    bottom: 32px
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    // bottom: 32px
+    & .card-content
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
 
 .end-turn-btn
+    color: #333
     display: block
     width: 10em
     min-height: 3em
     text-align: center
     text-decoration: none
-    color: #333
     font-weight: bold
     font-size: 1.2em
-    background-color: #fbff00
     border: none
     margin: 0
     border-radius: 8px
     user-select: none
     position: absolute
+    top: 50%
+    transform: translateY(-50%)
     right: 3em
     line-height: 3em
-    box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.3)
+    box-shadow: 0 8px 8px 0 rgba(0, 0, 0, 0.3)
     cursor: pointer
+    &:active
+        margin: 8px 0 -8px 0
+
+.inactive
+    top: 40%
+    transform: translateY(-50%)
+    background-color: hsb(0, 0%, 40%)
+    box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
+    margin: 8px 0 -8px 0
+
+.yellow
+    top: 50%
+    transform: translateY(-50%)
+    background-color: hsb(56, 90%, 98%)
+    box-shadow: 0 8px 0 0 hsb(52, 94%, 93%), 0 10px 10px 0 rgba(0, 0, 0, 0.3)
     &:hover
-        background-color: #fbff00
-        box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.3)
+        box-shadow: 0 8px 0 0 hsb(52, 94%, 93%), 0 10px 10px 0 rgba(0, 0, 0, 0.3)
     &:active
         background-color: #f1d900
-        box-shadow: 0 4px 0 0 #e2ba06, 0 4px 4px 0 rgba(0, 0, 0, 0.5)
-        margin: 4px 0 -4px 0
+        box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
+
+.green
+    top: 60%
+    transform: translateY(-50%)
+    background-color: hsb(100, 90%, 98%)
+    box-shadow: 0 8px 0 0 hsb(102, 94%, 93%), 0 10px 10px 0 rgba(0, 255, 0, 0.4)
+    &:hover
+        box-shadow: 0 8px 0 0 hsb(102, 94%, 93%), 0 10px 10px 0 rgba(0, 255, 0, 0.4)
+    &:active
+        background-color: hsb(102, 94%, 93%)
+        box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
 
 .justify-content-around
     justify-content: space-around !important
@@ -234,7 +268,9 @@ body
 
 $body-background-color: #e0e0e0
 $card-background-color: #f4f4f4
-$input-border-color: transparent
-$input-background-color: #e8e8e8
+// $input-border-color: transparent
+// $input-background-color: #e8e8e8
 
 $card-shadow: 0 3px 6px rgba(0,0,0,0.36)
+
+@import "../bulma/bulma.sass"
