@@ -83,17 +83,8 @@ let hand (cards: ReactElement list) =
                                                                 "d-flex justify-content-between align-items-center"
                                                             prop.children cards ] ] ] ] ]
 
-let private settingsComponent' () =
-    Bulma.card [ prop.className "settings-button"
-                 prop.children
-                     [ Bulma.cardContent [ prop.className "fullheight"
-                                           prop.children
-                                               [ Bulma.icon [ icon.isMedium
-                                                              prop.children
-                                                                  [ Html.i [ prop.className "fas fa-cog fa-2x" ] ] ] ] ] ] ]
 
-let settingsComponent =
-    React.functionComponent settingsComponent'
+
 
 let playerList (players: ReactElement list) =
     Bulma.card [ prop.className "player-list"
@@ -225,3 +216,46 @@ type TableArgs = { Cards: ReactElement list }
 
 let tableComponent =
     React.functionComponent (fun (a: TableArgs) -> a.Cards)
+
+let settingsHeader =
+    Bulma.modalCardHead [ Bulma.modalCardTitle "Настройки пользователя"
+                          Html.button [ prop.className "delete"
+                                        prop.ariaLabel "close" ] ]
+
+let settignsFooter =
+    Bulma.modalCardFoot [ Bulma.button.button [ color.isSuccess
+                                                prop.text "ОК" ]
+                          Bulma.button.button "Отмена" ]
+
+
+let aviUploadField =
+    Bulma.field.div [ Bulma.label "Загрузите файл авы"
+                      Bulma.file [ file.hasName ++ file.isFullWidth
+                                   prop.children
+                                       [ Bulma.fileLabel.label [ Bulma.fileInput [ prop.name "resume" ]
+                                                                 Bulma.fileCta [ Bulma.fileIcon
+                                                                                     [ Html.i
+                                                                                         [ prop.className
+                                                                                             "fas fa-upload" ] ]
+                                                                                 Bulma.fileLabel.label "тык" ]
+                                                                 Bulma.fileName "здесь короче название файла" ] ] ] ]
+
+let nicknameChangeField =
+    Bulma.field.div [ Bulma.label "Выберите себе ник"
+                      Bulma.control.div [ Bulma.input.text [ prop.placeholder "Здесь ваш оригинальный ник" ] ] ]
+
+let previewField p =
+    Bulma.field.div [ Bulma.label "Предпросмотр"
+                      player p ]
+
+let settingsBody p =
+    Bulma.modalCardBody [ aviUploadField
+                          nicknameChangeField
+                          previewField p ]
+
+let settings p =
+    Bulma.modal [ modal.isActive
+                  prop.children [ Bulma.modalBackground []
+                                  Bulma.modalCard [ settingsHeader
+                                                    settingsBody p
+                                                    settignsFooter ] ] ]

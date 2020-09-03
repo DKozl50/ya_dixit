@@ -24,3 +24,4 @@ let inline konst x _ = x
 let imgSrc (id: Model.CardID) = "/img/" + id
 
 let aviSrc (avi: string) = "/avi/" + avi
+
