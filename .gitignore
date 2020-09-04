@@ -1,3 +1,5 @@
 __pycache__
 .cache
 app.log
+.mypy_cache
+.coverage
