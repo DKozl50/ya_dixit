@@ -1,8 +1,12 @@
 from enum import Enum, auto
+from random import shuffle, choice
+from typing import Any, Dict
 from random import shuffle
 from typing import Any, Dict, List, Optional
 from uuid import uuid1
-from os import listdir
+from os import listdir, makedirs
+from shutil import copy
+from json import dump as js_dump, load as js_load
 import logging
 
 logger = logging.getLogger("app.mechanics")
@@ -348,7 +352,7 @@ class Game:
     def _fix_packs(self):
         """Fixes packs choice.
         Transforms packs to cards and shuffles them."""
-        self._cards = _packs_to_cards(self.packs)  # TODO packs
+        self._cards = choice(Pack.pack_ids.values())
         shuffle(self._cards)
 
     def _shuffle_players(self):
@@ -463,24 +467,43 @@ class Card:
 
 
 class Pack:
-    """id: Pack.id
-    name: string
-    description: string"""
-    __pack_ids: Dict[int, Any] = {}
+    pack_ids: Dict[str, Any] = {}
 
-    def __init__(self, name, description):
-        self._get_new_id()
-        self.name = name
-        self.description = description
-
-    # TODO add Database
-    def _get_new_id(self):
-        self.id = uuid1().time_low
-        Pack.__pack_ids[self.id] = self
+    def __init__(self, name, images=None):
+        if images is None:
+            images = []
+        self.id = name
+        Pack.pack_ids[self.id] = self
+        self.pictures = images
 
 
-def _packs_to_cards(packs):  # TODO add Database
-    path = "../../front/public/img"
-    names = list(map(lambda name: name.replace(".jpg", ""), listdir(path)))
-    shuffle(names)
-    return [Card("picture", 1, name) for name in names[:200]]
+def load_packs():
+    try:
+        with open('packs.json', 'r') as read_file:
+            data = js_load(read_file)
+            for name, images in data.items():
+                Pack(name, images)
+    except FileNotFoundError:
+        pass
+    cd = '..\\..\\front\\public'
+    packs_name = listdir(cd)
+    if 'img' in packs_name:
+        packs_name.remove('img')
+    else:
+        makedirs(f'{cd}\\img')
+    if len(packs_name) > 0:
+        for name in packs_name:
+            if name in Pack.pack_ids:
+                continue
+            images = listdir(f'{cd}\\{name}')
+            Pack(name, images)
+            for image in images:
+                copy(f'{cd}\\{name}\\{image}', f'{cd}\\img')
+    with open('packs.json', 'w') as write_file:
+        data = {}
+        for name, pack in Pack.pack_ids.items():
+            data[name] = pack.pictures
+        js_dump(data, write_file)
+
+
+load_packs()
