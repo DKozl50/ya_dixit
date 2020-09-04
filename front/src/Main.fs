@@ -10,7 +10,7 @@ open Elmish.React
 open Elmish.Debug
 open Elmish.HMR
 
-Program.mkProgram Init.initModel Update.update Render.render
+Program.mkProgram Init.init Update.update Render.render
 |> Program.withSubscription Socket.serverMessageSubscription
 #if DEBUG
 |> Program.withDebugger

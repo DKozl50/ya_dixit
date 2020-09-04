@@ -2,40 +2,62 @@ module Update
 
 open Elmish
 open Model
+open Util
 
-let private makeMove (state: GameState) =
+let private makeMove (state: RoomState) =
     { state with
           Client =
               { state.Client with
                     MoveAvailable = false } }
 
-let private selectCard (id: CardID option) (state: GameState) =
+let private selectCard (id: CardID option) (state: RoomState) =
     { state with
           Hand = { state.Hand with SelectedCard = id } }
 
-let private mapGameState (f: GameState -> GameState) (state: ModelState) =
-    match state with
-    | ModelState.Room (id, s) -> ModelState.Room(id, f s)
-    | _ ->
-        Printf.eprintfn "Warning: incorrect message recieved"
-        state
+let private mapRoomState (f: RoomState -> RoomState) (state: ModelState) =
+    let page' =
+        match state.Page with
+        | Page.GameRoom s -> Page.GameRoom ^ f s
+        | other -> other
+
+    { state with Page = page' }
 
 let private userUpdate (msg: UserMessage) (state: ModelState) =
-    Socket.sendObject msg
-    match msg with
-    | UserMessage.CreateRoom _ -> ModelState.Connecting, Cmd.none
-    | UserMessage.JoinRoom _ -> ModelState.Connecting, Cmd.none
-    | UserMessage.LeaveRoom -> ModelState.Lobby, Cmd.none
-    | UserMessage.SelectCard id -> mapGameState (selectCard (Some id)) state, Cmd.none
-    | _ -> mapGameState makeMove state, Cmd.none
+    let state' =
+        match msg with
+        | UserMessage.JoinRoom _ -> { state with Page = Page.Connecting }
+        | UserMessage.LeaveRoom -> { state with Page = Page.Lobby }
+        | UserMessage.SelectCard id -> mapRoomState (selectCard ^ Some id) state
+        | UserMessage.TellStory _
+        | UserMessage.EndTurn -> mapRoomState makeMove state
+        | UserMessage.UpdateInfo _ -> state
+
+    state', Socket.sendObjectCmd msg
 
 let private serverUpdate (msg: ServerMessage) (state: ModelState) =
+    let state' =
+        match msg with
+        | ServerMessage.RoomUpdate s -> { state with Page = Page.GameRoom s }
+        | ServerMessage.FailConnect -> { state with Page = Page.Lobby }
+
+    state', Cmd.none
+
+let private internalUpdate (msg: InternalMessage) (state: ModelState) =
     match msg with
-    | ServerMessage.RoomConnect (id, s) -> ModelState.Room(id, s), Cmd.none
-    | ServerMessage.RoomUpdate ns -> mapGameState (fun _ -> ns) state, Cmd.none
-    | ServerMessage.FailConnect -> ModelState.Lobby, Cmd.none
+    | InternalMessage.UpdateStorage s ->
+        { state with Storage = s },
+        Cmd.batch [ Storage.updateStorageCmd s
+                    Cmd.ofMsg ^ Msg.UserMsg ^ UserMessage.UpdateInfo s ]
 
 let update (msg: Msg) (state: ModelState) =
-    match msg with
-    | Msg.UserMsg msg -> userUpdate msg state
-    | Msg.ServerMsg msg -> serverUpdate msg state
+    let state', cmd =
+        match msg with
+        | Msg.UserMsg msg -> userUpdate msg state
+        | Msg.ServerMsg msg -> serverUpdate msg state
+        | Msg.InternalMsg msg -> internalUpdate msg state
+
+    let cmd' =
+        Cmd.batch [ cmd
+                    Url.cmdUpdateURL state'.Page ]
+
+    state', cmd'

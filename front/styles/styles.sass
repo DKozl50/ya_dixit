@@ -1,5 +1,13 @@
 @charset "utf-8"
 
+@function hsb($h-hsb, $s-hsb, $b-hsb, $a: 1)
+    @if $b-hsb == 0
+        @return hsla(0, 0, 0, $a)
+    @else
+        $l-hsl: ($b-hsb/2) * (2 - ($s-hsb/100))
+        $s-hsl: ($b-hsb * $s-hsb) / if($l-hsl < 50, $l-hsl * 2, 200 - $l-hsl * 2)
+        @return hsla($h-hsb, $s-hsl, $l-hsl, $a)
+
 html, body, .fullheight
     min-height: 100% !important
     height: 100%
@@ -10,7 +18,7 @@ body
     width: 100%
 
 .card
-    border-radius: 8px
+    border-radius: 16px
 
 .circle-out
     position: relative
@@ -45,53 +53,112 @@ body
 .top
     width: 30em
     position: absolute !important
-    top: -8px
-    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    top: -4px
+    box-shadow: 0 14px 28px #38556140, 0 10px 10px rgba(0,0,0,0.22) !important
+    border-top-left-radius: 0
+    border-top-right-radius: 0
 
 .player-list
     position: absolute !important
     box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
-    left: -8px
+    border-top-left-radius: 0
+    border-bottom-left-radius: 0
+    left: -4px
+
+.score-div
+    position: relative
+    z-index: 10
+
+.score
+    position: absolute
+    top: 50%
+    left: 1.5rem
+    z-index: 10
+    transform: translateY(-50%)
+
+.username
+    word-wrap: break-word
+    width: 8rem
 
 .hand
     position: absolute !important
     bottom: -128px
     box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
 
-.settings
+    & .game-card
+        bottom: 128px
+        transition: all 0.2s
+
+    & .chosen
+        bottom: 128px
+
+.settings-button
     position: absolute !important
-    bottom: -8px
-    right: -8px
+    bottom: 0
+    right: 0
+    border-bottom-right-radius: 0
+    border-top-right-radius: 0
+    border-bottom-left-radius: 0
     box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
-    width: 6em
-    height: 6em
     transition: all 0.2s
+    cursor: pointer
     &:hover
-        width: 30em
-        height: 20em
         & .fa-cog
             transform: rotate(60deg)
 
     & .fa-cog
-        position: absolute
-        bottom: 0.5em
-        right: 0.5em
         transition: all 0.2s
 
 .game-card
-    width: 9em
-    height: 12em
+    width: 9rem
+    height: 12rem
     cursor: pointer
     transition: all 0.2s
-    bottom: 0
     position: relative
 
-    &:hover
-        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22)
-
-    & img
+    & .card-content
+        width: 100%
+        height: 100%
+        padding: 0 !important
+        overflow: hidden
+        position: relative
+        z-index: 2
+        transition: box-shadow 0.2s
+        border-radius: inherit
+    &:not(.correct):not(.chosen) .card-content:hover
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    .chosen
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
+    & .card-content img
         height: 100%
         object-fit: cover
+
+.voters
+    position: absolute
+    top: 100%
+    pointer-events: none
+    & img
+        position: relative
+        width: 2.333rem !important
+        box-shadow: 0 0 0 0.15rem #333, 0 3px 6px rgba(0,0,0,0.3)
+        height: 2.333rem
+        z-index: 1
+
+.author
+    position: absolute
+    top: 0
+    left: 0
+    pointer-events: none
+    z-index: 3
+    & img
+        position: relative
+        width: 2.333rem !important
+        box-shadow: 0 0 0 0.15rem #333, 0 3px 6px rgba(0,0,0,0.3)
+        height: 2.333rem
+        z-index: 3
+
+.active-user
+    box-shadow: 0 0 0 0.25rem #33ee11
 
 .larger
     transition: all 0.2s
@@ -103,40 +170,65 @@ body
 .larger img
     object-fit: contain
 
-.hand .game-card:hover, .chosen
-    transition: all 0.2s
-    bottom: 128px
+.correct
+    box-shadow: 0 0 16px 8px rgba(0, 255, 0, 0.7) !important
 
 .chosen
-    border: 4px solid lime
-    box-shadow: 0 0 28px rgba(0, 255, 0, 0.7) !important
+    // bottom: 32px
+    & .card-content
+        box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important
 
 .end-turn-btn
+    color: #333
     display: block
     width: 10em
     min-height: 3em
     text-align: center
     text-decoration: none
-    color: #333
     font-weight: bold
     font-size: 1.2em
-    background-color: #fbff00
     border: none
     margin: 0
     border-radius: 8px
     user-select: none
     position: absolute
+    top: 50%
+    transform: translateY(-50%)
     right: 3em
     line-height: 3em
-    box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.5)
+    box-shadow: 0 8px 8px 0 rgba(0, 0, 0, 0.3)
     cursor: pointer
+    &:active
+        margin: 8px 0 -8px 0
+
+.inactive
+    top: 40%
+    transform: translateY(-50%)
+    background-color: hsb(0, 0%, 40%)
+    box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
+    margin: 8px 0 -8px 0
+
+.yellow
+    top: 50%
+    transform: translateY(-50%)
+    background-color: hsb(56, 90%, 98%)
+    box-shadow: 0 8px 0 0 hsb(52, 94%, 93%), 0 10px 10px 0 rgba(0, 0, 0, 0.3)
     &:hover
-        background-color: #fbff00
-        box-shadow: 0 8px 0 0 #f0d911, 0 8px 8px 0 rgba(0, 0, 0, 0.5)
+        box-shadow: 0 8px 0 0 hsb(52, 94%, 93%), 0 10px 10px 0 rgba(0, 0, 0, 0.3)
     &:active
         background-color: #f1d900
-        box-shadow: 0 4px 0 0 #e2ba06, 0 4px 4px 0 rgba(0, 0, 0, 0.5)
-        margin: 4px 0 -4px 0
+        box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
+
+.green
+    top: 60%
+    transform: translateY(-50%)
+    background-color: hsb(100, 90%, 98%)
+    box-shadow: 0 8px 0 0 hsb(102, 94%, 93%), 0 10px 10px 0 rgba(0, 255, 0, 0.4)
+    &:hover
+        box-shadow: 0 8px 0 0 hsb(102, 94%, 93%), 0 10px 10px 0 rgba(0, 255, 0, 0.4)
+    &:active
+        background-color: hsb(102, 94%, 93%)
+        box-shadow: 0 0px 0 0 #e2ba06, inset 0 0px 1px 0 rgba(0, 0, 0, 0.3)
 
 .justify-content-around
     justify-content: space-around !important
@@ -153,8 +245,19 @@ body
 .justify-content-center
     justify-content: center
 
+.justify-content-end
+    align-content: flex-end
+    margin: auto 0 0
+
 .align-items-center
     align-items: center
+
+.align-content-start
+    align-content: center
+
+.align-self-right
+    margin-left: auto
+    margin-right: 0.75rem
 
 .flex-wrap
     flex-wrap: wrap
@@ -163,8 +266,9 @@ body
     user-select: none
     cursor: pointer
 
-$body-background-color: #e2e1e0
-$input-border-color: transparent
-$input-background-color: #e8e6e3
+$body-background-color: #e0e0e0
+$card-background-color: #f4f4f4
+// $input-border-color: transparent
+// $input-background-color: #e8e8e8
 
-$card-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23)
+$card-shadow: 0 3px 6px rgba(0,0,0,0.36)

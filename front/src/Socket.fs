@@ -2,24 +2,43 @@ module Socket
 
 open Browser
 open Thoth.Json
+open Util
 
 let private socket =
     WebSocket.Create("ws://localhost:5000/socket")
 
-let sendJson (json: string) = socket.send (json)
+let mutable private messageQueue: string list = []
+
+let private processQueue _ =
+    for msg in messageQueue do
+        socket.send msg
+    messageQueue <- []
+
+socket.onopen <- processQueue
+
+let sendJson (json: string) =
+    if socket.readyState = Types.WebSocketState.OPEN
+    then socket.send json
+    else messageQueue <- messageQueue @ [ json ]
 
 let inline sendObject (x: 'T) = Encode.Auto.toString (4, x) |> sendJson
-let parseServerMessage (json: string): Result<Model.ServerMessage, string> = Decode.Auto.fromString (json)
 
-let serverMessageSubscription (_: Model.ModelState) =
+let inline sendObjectCmd (x: 'T) =
+    cmdExec
+    ^ fun _ -> sendObject x
+
+let private parseServerMessage json =
+    Decode.Auto.fromString<Model.ServerMessage> json
+
+let serverMessageSubscription _ =
     let sub dispatch =
         let f (s: Types.MessageEvent) =
-            printfn "Message recieved:\n%A" (s.data.ToString())
+            printfn "Message received:\n%O" s.data
             match s.data.ToString() |> parseServerMessage with
-            | Ok msg -> 
+            | Ok msg ->
                 printfn "Message successfully parsed:\n%A" msg
                 Model.Msg.ServerMsg msg |> dispatch
-            | Error s -> printfn "Error when parsing the message:\n%A" s
+            | Error s -> eprintfn "Error when parsing the message:\n%A" s
 
         socket.onmessage <- f
 
