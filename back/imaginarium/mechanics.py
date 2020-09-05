@@ -61,6 +61,7 @@ class Game:
     settings: dict
     state: Waiting/Storytelling/Matching/Guessing/Interlude/Victory
     turn: None/Player
+    removed_players: [Player]
     """
     __game_ids: Dict[int, Any] = {}
 
@@ -100,6 +101,7 @@ class Game:
         self.current_player: Player
         self.lead_card: Card
         self.current_table = dict()
+        self.removed_players = list()
 
     def add_player(self, player: Player):
         """Can be called before and in the game
@@ -118,9 +120,19 @@ class Game:
         if self.state != self.GamePhase.WAITING:
             self._deal_hand(player)
 
+    # Decides if the player could be completely removed
+    # or should be just added to the removed_list (and does it)
     def remove_player(self, player: Player) -> None:
-        """Removes player from game setting score as did_not_finish"""
-        if self.state != Game.GamePhase.WAITING:
+        removed_players.append(player)
+        self.turn_ended[player] = True
+
+        # Storyteller has not told the story yet, so can be removed completely.
+        if self.current_player == player and not self.current_table:
+            self.end_turn()
+
+        # TODO storyteller left the game before telling the story (Alice)
+        # TODO player left before placing the card
+      '''  if self.state != Game.GamePhase.WAITING:
             if player != self.current_player:
                 if self.state == Game.GamePhase.STORYTELLING:
                     if self.players.index(player) < self.turn:
@@ -172,7 +184,7 @@ class Game:
             # removes from results as the game has not started
             self.result.pop(player)
         self.players.remove(player)
-        player.current_game = None
+        player.current_game = None'''
 
     def start_game(self):
         """Shuffles players, generates card list,
@@ -218,6 +230,11 @@ class Game:
             self.turn_ended[player] = False
         self.guesses = dict()
         self.turn_ended[self.current_player] = True
+        
+        # All removed players have already done their moves.
+        for removed_player in self.removed_players:
+            self.turn_ended[removed_player] = True
+
         self.state = self.GamePhase.GUESSING
 
     def valuate_guesses(self):
@@ -262,6 +279,18 @@ class Game:
             return
         self.turn_ended[player] = True
 
+    # Deleting all information about player (except his score) from the game.
+    def purge_player(self, player: Player) -> None:
+        self._cards += self.hands[player]
+        self.hands[player] = []
+        self.result[player] = f"did_not_finish {self.result[player]}"
+
+    # Cleaning the list of persons who left the game.
+    def clean_removed_players(self) -> None:
+        for removed_player in self.removed_players:
+            purge_player(removed_player)
+            removed_players.remove(removed_player)
+
     def all_turns_ended(self):
         cur_player = self.get_cur_player()
         for player in self.players:
@@ -295,6 +324,10 @@ class Game:
     def end_turn(self):
         """Ends turn changing game.state, clearing internal variables
         and dealing cards."""
+
+        # TODO clearing the removelist (Alice)
+        self.clean_removed_players()
+
         self.turn = (self.turn + 1) % len(self.players)
 
         # clear _turn_ended
@@ -313,6 +346,7 @@ class Game:
         self.current_association = None
         self.lead_card = None
         self.state = Game.GamePhase.STORYTELLING
+
 
     def finished(self):
         maximum = -1
