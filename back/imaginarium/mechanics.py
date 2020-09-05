@@ -6,6 +6,7 @@ from os import listdir, makedirs
 from shutil import copy
 from json import dump as js_dump, load as js_load
 import logging
+from collections import defaultdict
 
 logger = logging.getLogger("app.mechanics")
 logger.setLevel(logging.DEBUG)
@@ -93,15 +94,17 @@ class Game:
         self.bets = dict()
         self.guesses = dict()
         self.state = self.GamePhase.WAITING
-        self.hands: Dict[Player, List[Card]] = dict()
+        self.hands: Dict[Player, List[Card]] = defaultdict(list)
         self.current_association = ""
         self.turn_ended: Dict[Player, bool] = dict()
         self.turn = None
         self.winner: Player
-        self.current_player: Player
+        self.current_player: Optional[Player] = None
         self.lead_card: Card
         self.current_table = dict()
         self.removed_players = list()
+        self.started: bool = False
+        self._cards: List[Card] = list()
 
     def add_player(self, player: Player):
         """Can be called before and in the game
@@ -123,8 +126,12 @@ class Game:
     # Decides if the player could be completely removed
     # or should be just added to the removed_list (and does it)
     def remove_player(self, player: Player) -> None:
-        removed_players.append(player)
+        self.removed_players.append(player)
         self.turn_ended[player] = True
+
+        if self.state == Game.GamePhase.WAITING:
+            self.purge_player(player)
+            return
 
         # Storyteller has not told the story yet, so can be removed completely.
         if self.current_player == player and not self.current_table:
@@ -132,7 +139,8 @@ class Game:
 
         # TODO storyteller left the game before telling the story (Alice)
         # TODO player left before placing the card
-      '''  if self.state != Game.GamePhase.WAITING:
+        """
+        if self.state != Game.GamePhase.WAITING:
             if player != self.current_player:
                 if self.state == Game.GamePhase.STORYTELLING:
                     if self.players.index(player) < self.turn:
@@ -184,12 +192,14 @@ class Game:
             # removes from results as the game has not started
             self.result.pop(player)
         self.players.remove(player)
-        player.current_game = None'''
+        player.current_game = None
+        """
 
     def start_game(self):
         """Shuffles players, generates card list,
         deals 6 cards to each player.
         """
+        self.started = True
         self.turn = 0  # first player is a storyteller now
         self._fix_packs()
         self._shuffle_players()
@@ -230,7 +240,7 @@ class Game:
             self.turn_ended[player] = False
         self.guesses = dict()
         self.turn_ended[self.current_player] = True
-        
+
         # All removed players have already done their moves.
         for removed_player in self.removed_players:
             self.turn_ended[removed_player] = True
@@ -275,7 +285,7 @@ class Game:
 
     def finish_turn(self, player):
         if (self.state == self.GamePhase.GUESSING and
-                self.guesses[player] is None):
+                player not in self.guesses):
             return
         self.turn_ended[player] = True
 
@@ -283,13 +293,17 @@ class Game:
     def purge_player(self, player: Player) -> None:
         self._cards += self.hands[player]
         self.hands[player] = []
-        self.result[player] = f"did_not_finish {self.result[player]}"
+        if self.started:
+            self.result[player] = f"did_not_finish {self.result[player]}"
+        else:
+            self.result.pop(player)
+        self.players.remove(player)
+        self.removed_players.remove(player)
 
     # Cleaning the list of persons who left the game.
-    def clean_removed_players(self) -> None:
+    def purge_removed_players(self) -> None:
         for removed_player in self.removed_players:
-            purge_player(removed_player)
-            removed_players.remove(removed_player)
+            self.purge_player(removed_player)
 
     def all_turns_ended(self):
         cur_player = self.get_cur_player()
@@ -326,7 +340,7 @@ class Game:
         and dealing cards."""
 
         # TODO clearing the removelist (Alice)
-        self.clean_removed_players()
+        self.purge_removed_players()
 
         self.turn = (self.turn + 1) % len(self.players)
 
@@ -347,8 +361,7 @@ class Game:
         self.lead_card = None
         self.state = Game.GamePhase.STORYTELLING
 
-
-    def finished(self):
+    def finished(self) -> Optional[Player]:
         maximum = -1
         player_with_maximum = None
         for player in self.players:

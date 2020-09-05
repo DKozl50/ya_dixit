@@ -38,16 +38,15 @@ class Lobby(object):
     @staticmethod
     def process_message(ws: websocket.WebSocket, message: List) -> None:
         """Process a message from a client"""
-        if message[0] == "CreateRoom":
-            ws_to_player[ws].name = message[1]
-            create_room(ws)
-        elif message[0] == "JoinRoom":
+        if message[0] == "JoinRoom":
+            if message[1] == "":
+                create_room(ws)
+                return
             game_backend = main_lobby.backends.get(int(message[1]))
             if game_backend is None:
                 fail_connect(ws)
                 return
             game = game_backend.game
-            ws_to_player[ws].name = message[2]
             join_room(ws, game)
             if len(game.players) == game.players_to_start:
                 game_backend.start_game()
