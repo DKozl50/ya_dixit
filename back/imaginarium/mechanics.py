@@ -1,7 +1,5 @@
 from enum import Enum, auto
 from random import shuffle, choice
-from typing import Any, Dict
-from random import shuffle
 from typing import Any, Dict, List, Optional
 from uuid import uuid1
 from os import listdir, makedirs
@@ -17,7 +15,6 @@ file_handler.setFormatter(logging.Formatter(
     "%(levelname)-8s [%(asctime)s]  %(message)s")
 )
 logger.addHandler(file_handler)
-print(logger)
 
 
 class Player:
@@ -91,17 +88,17 @@ class Game:
         }
         # TODO game should be started by leader of the room
         self.players_to_start = 3
-        self.story = None
+        self.story: Optional[str] = None
         self.bets = dict()
         self.guesses = dict()
         self.state = self.GamePhase.WAITING
-        self.hands = dict()
+        self.hands: Dict[Player, List[Card]] = dict()
         self.current_association = ""
-        self.turn_ended = dict()
+        self.turn_ended: Dict[Player, bool] = dict()
         self.turn = None
-        self.winner = None
-        self.current_player = None
-        self.lead_card = None
+        self.winner: Player
+        self.current_player: Player
+        self.lead_card: Card
         self.current_table = dict()
 
     def add_player(self, player: Player):
@@ -121,10 +118,8 @@ class Game:
         if self.state != self.GamePhase.WAITING:
             self._deal_hand(player)
 
-    def remove_player(self, player):
+    def remove_player(self, player: Player) -> None:
         """Removes player from game setting score as did_not_finish"""
-        self.players.remove(player)
-        player.current_game = None
         if self.state != Game.GamePhase.WAITING:
             if player != self.current_player:
                 if self.state == Game.GamePhase.STORYTELLING:
@@ -136,7 +131,7 @@ class Game:
                         f"did_not_finish {self.result[player]}"
                 elif (self.state == Game.GamePhase.MATCHING and
                       len(self.current_table) < len(self.players)):
-                    if self.bets[player] is None:
+                    if self.bets.get(player) is None:
                         if self.players.index(player) < self.turn:
                             self.turn -= 1
                         self._cards += self.hands[player]
@@ -173,10 +168,11 @@ class Game:
                     self.hands[player] = []
                     self.result[player] = \
                         f"did_not_finish {self.result[player]}"
-
         else:
             # removes from results as the game has not started
             self.result.pop(player)
+        self.players.remove(player)
+        player.current_game = None
 
     def start_game(self):
         """Shuffles players, generates card list,
@@ -275,7 +271,7 @@ class Game:
                 return False
         return True
 
-    def make_bet(self, player, card_id):
+    def make_bet(self, player: Player, card_id: str):
         # player isn't a storyteller
         card = Card.card_ids[card_id]
         if self.turn_ended[player] is True:
@@ -283,7 +279,7 @@ class Game:
         if card in self.hands[player]:
             self.bets[player] = card
 
-    def make_guess(self, player, card_id):
+    def make_guess(self, player: Player, card_id: str) -> None:
         # player isn't a storyteller
         card = Card.card_ids[card_id]
         if self.turn_ended[player] is True:
@@ -293,7 +289,7 @@ class Game:
                 logger.debug(f"{player.id} choose {card_id}")
                 self.guesses[player] = card
 
-    def add_lead_card(self, card_id: str):
+    def add_lead_card(self, card_id: str) -> None:
         self.lead_card = Card.card_ids[card_id]
 
     def end_turn(self):
@@ -343,16 +339,18 @@ class Game:
     def get_state(self):
         return self.state
 
-    def get_cur_player(self):
+    def get_cur_player(self) -> Player:
         return self.current_player
 
-    def get_hand(self, target):
+    def get_hand(self, target: Player) -> List[str]:
         return [str(card.id) for card in self.hands[target]]
 
-    def _fix_packs(self):
+    def _fix_packs(self) -> None:
         """Fixes packs choice.
         Transforms packs to cards and shuffles them."""
-        self._cards = choice(Pack.pack_ids.values())
+        logger.debug(list(Pack.pack_ids.values()))
+        pack = choice(list(Pack.pack_ids.values()))
+        self._cards = [Card(image, pack.id) for image in pack.pictures]
         shuffle(self._cards)
 
     def _shuffle_players(self):
@@ -467,7 +465,7 @@ class Card:
 
 
 class Pack:
-    pack_ids: Dict[str, Any] = {}
+    pack_ids: Dict[str, Any] = dict()
 
     def __init__(self, name, images=None):
         if images is None:
@@ -485,20 +483,20 @@ def load_packs():
                 Pack(name, images)
     except FileNotFoundError:
         pass
-    cd = '..\\..\\front\\public'
+    cd = '../../front/public'
     packs_name = listdir(cd)
     if 'img' in packs_name:
         packs_name.remove('img')
     else:
-        makedirs(f'{cd}\\img')
+        makedirs(f'{cd}/img')
     if len(packs_name) > 0:
         for name in packs_name:
             if name in Pack.pack_ids:
                 continue
-            images = listdir(f'{cd}\\{name}')
+            images = listdir(f'{cd}/{name}')
             Pack(name, images)
             for image in images:
-                copy(f'{cd}\\{name}\\{image}', f'{cd}\\img')
+                copy(f'{cd}/{name}/{image}', f'{cd}/img')
     with open('packs.json', 'w') as write_file:
         data = {}
         for name, pack in Pack.pack_ids.items():

@@ -22,6 +22,19 @@ class TestGame(unittest.TestCase):
         for i in range(1, 5):
             self.game.add_player(Player(str(i)))
 
+    def _next_turn(self):
+        game = self.game
+        cur_player = game.get_cur_player()
+        game.add_lead_card(game.hands[cur_player][0].id)
+        game.start_turn("association")
+        for player in game.players:
+            if player == cur_player:
+                continue
+            game.make_guess(player, game.hands[player][0].id)
+        for player in game.players:
+            game.make_bet(player, list(game.current_table.keys())[0].id)
+        game.end_turn()
+
     def test_add(self):
         self._init_game()
         self.assertEqual(len(self.game.players), 4)
@@ -43,9 +56,15 @@ class TestGame(unittest.TestCase):
 
     def test_remove_listener_during_storytelling(self):
         self._init_game()
+        game = self.game
+        game.start_game()
+        player = game.players[-1]
+        game.remove_player(player)
+
+    def test_make_turn(self):
+        self._init_game()
         self.game.start_game()
-        self.game.add_lead_card(self.game.hands[self.game.players[0]][0].id)
-        self.game.start_turn("association")
+        self._next_turn()
 
     def test_game_states(self):
         self._init_game()

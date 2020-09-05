@@ -66,14 +66,14 @@ class GameBackend(object):
     """Interface for game and updating WebSocket clients."""
     backend: Dict[websocket.WebSocket, Any] = {}
 
-    def __init__(self):
-        self.game = Game()
-        self.clients = list()
+    def __init__(self) -> None:
+        self.game: Game = Game()
+        self.clients: List[websocket.WebSocket] = list()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return len(self.game.players) > 0
 
-    def process_message(self, ws: websocket.WebSocket, message: List) -> None:
+    def process_message(self, ws: websocket.WebSocket, message: list) -> None:
         if message[0] == "LeaveRoom":
             leave_room(ws)
         elif message[0] == "SelectCard":
@@ -258,7 +258,7 @@ def fail_connect(user):
     user.send('"FailConnect"')
 
 
-def route_message(ws: websocket.WebSocket, message: Any):
+def route_message(ws: websocket.WebSocket, message: Union[str, list, Any]):
     print(message)
     if type(message) not in [str, list]:
         logger.info(f"Unexpected type of message: {message}")

@@ -2,3 +2,5 @@ __pycache__
 .cache
 app.log
 Redis
+.coverage
+packs.json
