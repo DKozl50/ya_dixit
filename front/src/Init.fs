@@ -12,7 +12,7 @@ let initPage =
 let initCmd =
     Browser.Dom.document.getElementById("initial-message").innerHTML
     |> Thoth.Json.Decode.Auto.fromString<Msg>
-    |> resultMap Cmd.ofMsg
+    |> Result.map Cmd.ofMsg
     |> resultCollapse Cmd.none
 
 let setDispatch: Cmd<Msg> =

@@ -206,21 +206,22 @@ let private exit () =
     ^ UserMessage.LeaveRoom
 
 let exitButton =
-    Html.a [ prop.className "delete is-large"
-             prop.style [ style.position.absolute
-                          style.top (length.px 10)
-                          style.right (length.px 10) ]
-             prop.onClick (fun _ -> exit ()) ]
+    Bulma.delete [ delete.isLarge
+                   prop.style [ style.position.absolute
+                                style.top (length.px 10)
+                                style.right (length.px 10) ]
+                   prop.onClick (fun _ -> exit ()) ]
 
 type TableArgs = { Cards: ReactElement list }
 
 let tableComponent =
     React.functionComponent (fun (a: TableArgs) -> a.Cards)
 
-let settingsHeader =
+let settingsHeader setIsOpen =
     Bulma.modalCardHead [ Bulma.modalCardTitle "Настройки пользователя"
-                          Html.button [ prop.className "delete"
-                                        prop.ariaLabel "close" ] ]
+                          Bulma.delete [ prop.ariaLabel "close"
+                                         prop.onClick
+                                         ^ fun _ -> setIsOpen false ] ]
 
 let settignsFooter =
     Bulma.modalCardFoot [ Bulma.button.button [ color.isSuccess
@@ -253,9 +254,37 @@ let settingsBody p =
                           nicknameChangeField
                           previewField p ]
 
-let settings p =
+let private applyUpdatedInfo (p: Player) (c: ClientData) =
+    { p with
+          Name = Option.defaultValue p.Name c.Name
+          Avi = Option.defaultValue p.Avi c.Avi }
+
+let settings p updatedInfo setUpdatedInfo setIsOpen =
     Bulma.modal [ modal.isActive
                   prop.children [ Bulma.modalBackground []
-                                  Bulma.modalCard [ settingsHeader
-                                                    settingsBody p
+                                  Bulma.modalCard [ settingsHeader setIsOpen
+                                                    settingsBody ^ applyUpdatedInfo p updatedInfo
                                                     settignsFooter ] ] ]
+
+let settingsButton setIsOpen =
+    Bulma.card [ prop.className "settings-button"
+                 prop.onClick
+                 ^ fun _ -> setIsOpen true
+                 prop.children
+                     [ Bulma.cardContent [ prop.className "fullheight"
+                                           prop.children
+                                               [ Bulma.icon [ icon.isMedium
+                                                              prop.children
+                                                                  [ Html.i [ prop.className "fas fa-cog fa-2x" ] ] ] ] ] ] ]
+
+let private settingsComponent' p =
+    let updatedInfo, setUpdatedInfo =
+        React.useState { Name = None; Avi = None }
+
+    let isOpen, setIsOpen = React.useState false
+    [ settingsButton setIsOpen
+      if isOpen
+      then settings p updatedInfo setUpdatedInfo setIsOpen ]
+
+let settingsComponent =
+    React.functionComponent settingsComponent'

@@ -12,7 +12,7 @@ let private roomComponent =
           playerList s.PlayerListArgs
           turnButton s.TurnBtnClickable
           exitButton
-          settings s.Client
+          settingsComponent s.Client
           hand s.HandArgs
           tableComponent s.TableArgs ])
 
