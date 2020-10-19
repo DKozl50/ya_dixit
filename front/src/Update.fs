@@ -35,12 +35,14 @@ let private userUpdate (msg: UserMessage) (state: ModelState) =
     state', Socket.sendObjectCmd msg
 
 let private serverUpdate (msg: ServerMessage) (state: ModelState) =
-    let state' =
-        match msg with
-        | ServerMessage.RoomUpdate s -> { state with Page = Page.GameRoom s }
-        | ServerMessage.FailConnect -> { state with Page = Page.Lobby }
-
-    state', Cmd.none
+    match msg with
+    | ServerMessage.RoomUpdate s -> { state with Page = Page.GameRoom s }, Cmd.none
+    | ServerMessage.FailConnect -> { state with Page = Page.Lobby }, Cmd.none
+    | ServerMessage.AviUpload s ->
+        state,
+        Cmd.ofMsg
+        ^ Msg.InternalMsg
+        ^ InternalMessage.UpdateStorage { Name = None; Avi = Some s }
 
 let private internalUpdate (msg: InternalMessage) (state: ModelState) =
     match msg with

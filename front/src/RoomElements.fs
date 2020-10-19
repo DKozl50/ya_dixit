@@ -50,12 +50,12 @@ let card (a: CardArgs) =
                  if a.Selectable
                  then prop.onClick (fun _ -> selectCardMsg a.Info.ID) ]
 
-let player (p: Player) =
+let player' (p: Player) customAvi =
     Html.div [ prop.className "user d-flex align-items-center"
                prop.children [ Bulma.image [ image.is64x64 ++ spacing.mx3 ++ spacing.my3
                                              prop.children
                                                  [ Html.img [ prop.className "active-user" ++ image.isRounded
-                                                              prop.src ^ aviSrc p.Avi ] ] ]
+                                                              prop.src ^ customAvi ] ] ]
                                Bulma.title.h1 [ prop.className "username"
                                                 ++ title.is6
                                                 ++ spacing.ml3
@@ -63,6 +63,8 @@ let player (p: Player) =
                                                 prop.text p.Name ]
                                Bulma.title.h1 [ prop.className "align-self-right" ++ title.is6
                                                 prop.text p.Score ] ] ]
+
+let player (p: Player) = player' p ^ aviSrc p.Avi
 
 let private sendEndTurnMsg () =
     globalDispatch ^ Msg.UserMsg ^ UserMessage.EndTurn
@@ -186,7 +188,6 @@ type HeadBarArgs =
       ActiveButton: bool
       Story: string option }
 
-
 let headBar (a: HeadBarArgs) =
     Bulma.card [ prop.className "top"
                  prop.children
@@ -206,29 +207,39 @@ let private exit () =
     ^ UserMessage.LeaveRoom
 
 let exitButton =
-    Html.a [ prop.className "delete is-large"
-             prop.style [ style.position.absolute
-                          style.top (length.px 10)
-                          style.right (length.px 10) ]
-             prop.onClick (fun _ -> exit ()) ]
+    Bulma.delete [ delete.isLarge
+                   prop.style [ style.position.absolute
+                                style.top (length.px 10)
+                                style.right (length.px 10) ]
+                   prop.onClick (fun _ -> exit ()) ]
 
 type TableArgs = { Cards: ReactElement list }
 
 let tableComponent =
     React.functionComponent (fun (a: TableArgs) -> a.Cards)
 
-let settingsHeader =
+let settingsHeader setIsOpen =
     Bulma.modalCardHead [ Bulma.modalCardTitle "Настройки пользователя"
-                          Html.button [ prop.className "delete"
-                                        prop.ariaLabel "close" ] ]
+                          Bulma.delete [ prop.ariaLabel "close"
+                                         prop.onClick
+                                         ^ fun _ -> setIsOpen false ] ]
 
-let settignsFooter =
+let settignsFooter updatedInfo setUpdatedInfo setIsOpen =
     Bulma.modalCardFoot [ Bulma.button.button [ color.isSuccess
-                                                prop.text "ОК" ]
-                          Bulma.button.button "Отмена" ]
+                                                prop.text "ОК"
+                                                prop.onClick
+                                                ^ fun _ ->
+                                                    globalDispatch
+                                                    ^ Msg.InternalMsg
+                                                    ^ InternalMessage.UpdateStorage updatedInfo
+                                                    setIsOpen false ]
+                          Bulma.button.button [ prop.text "Отмена"
+                                                prop.onClick
+                                                ^ fun _ ->
+                                                    setUpdatedInfo { Avi = None; Name = None }
+                                                    setIsOpen false ] ]
 
-
-let aviUploadField =
+let aviUploadField updatedInfo setUpdatedInfo =
     Bulma.field.div [ Bulma.label "Загрузите файл авы"
                       Bulma.file [ file.hasName ++ file.isFullWidth
                                    prop.children
@@ -240,22 +251,56 @@ let aviUploadField =
                                                                                  Bulma.fileLabel.label "тык" ]
                                                                  Bulma.fileName "здесь короче название файла" ] ] ] ]
 
-let nicknameChangeField =
+let nicknameChangeField updatedInfo setUpdatedInfo =
     Bulma.field.div [ Bulma.label "Выберите себе ник"
-                      Bulma.control.div [ Bulma.input.text [ prop.placeholder "Здесь ваш оригинальный ник" ] ] ]
+                      Bulma.control.div
+                          [ Bulma.input.text [ prop.placeholder "Здесь ваш оригинальный ник"
+                                               prop.onChange (fun (s: string) ->
+                                                   setUpdatedInfo
+                                                       { updatedInfo with
+                                                             ClientData.Name = Some s }) ] ] ]
 
 let previewField p =
     Bulma.field.div [ Bulma.label "Предпросмотр"
                       player p ]
 
-let settingsBody p =
-    Bulma.modalCardBody [ aviUploadField
-                          nicknameChangeField
+let settingsBody updatedInfo setUpdatedInfo p =
+    Bulma.modalCardBody [ aviUploadField updatedInfo setUpdatedInfo
+                          nicknameChangeField updatedInfo setUpdatedInfo
                           previewField p ]
 
-let settings p =
+let private applyUpdatedInfo (p: Player) (c: ClientData) =
+    { p with
+          Name = Option.defaultValue p.Name c.Name
+          Avi = Option.defaultValue p.Avi c.Avi }
+
+let settings p updatedInfo setUpdatedInfo setIsOpen =
     Bulma.modal [ modal.isActive
                   prop.children [ Bulma.modalBackground []
-                                  Bulma.modalCard [ settingsHeader
-                                                    settingsBody p
-                                                    settignsFooter ] ] ]
+                                  Bulma.modalCard [ settingsHeader setIsOpen
+                                                    settingsBody updatedInfo setUpdatedInfo
+                                                    ^ applyUpdatedInfo p updatedInfo
+                                                    settignsFooter updatedInfo setUpdatedInfo setIsOpen ] ] ]
+
+let settingsButton setIsOpen =
+    Bulma.card [ prop.className "settings-button"
+                 prop.onClick
+                 ^ fun _ -> setIsOpen true
+                 prop.children
+                     [ Bulma.cardContent [ prop.className "fullheight"
+                                           prop.children
+                                               [ Bulma.icon [ icon.isMedium
+                                                              prop.children
+                                                                  [ Html.i [ prop.className "fas fa-cog fa-2x" ] ] ] ] ] ] ]
+
+let private settingsComponent' p =
+    let updatedInfo, setUpdatedInfo =
+        React.useState { Name = None; Avi = None }
+
+    let isOpen, setIsOpen = React.useState false
+    [ settingsButton setIsOpen
+      if isOpen
+      then settings p updatedInfo setUpdatedInfo setIsOpen ]
+
+let settingsComponent =
+    React.functionComponent settingsComponent'

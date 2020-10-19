@@ -9,19 +9,18 @@ let inline cmdExec (f: unit -> 'T) =
 
 let mutable globalDispatch: Model.Msg -> unit = ignore
 
+let inline isOk x =
+    match x with
+    | Ok _ -> true
+    | Error _ -> false
+
 let inline resultCollapse errorVal =
     function
     | Ok x -> x
     | Error _ -> errorVal
-
-let inline resultMap func =
-    function
-    | Ok x -> Ok ^ func x
-    | Error e -> Error e
 
 let inline konst x _ = x
 
 let imgSrc (id: Model.CardID) = "/img/" + id
 
 let aviSrc (avi: string) = "/avi/" + avi
-

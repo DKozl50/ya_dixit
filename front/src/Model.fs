@@ -71,6 +71,7 @@ type UserMessage =
 type ServerMessage =
     | FailConnect
     | RoomUpdate of RoomState
+    | AviUpload of string
 
 [<RequireQualifiedAccess>]
 type InternalMessage = UpdateStorage of ClientData
@@ -80,4 +81,3 @@ type Msg =
     | UserMsg of UserMessage
     | ServerMsg of ServerMessage
     | InternalMsg of InternalMessage
-
