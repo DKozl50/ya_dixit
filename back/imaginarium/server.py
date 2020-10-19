@@ -73,6 +73,8 @@ class GameBackend(object):
         return len(self.game.players) > 0
 
     def process_message(self, ws: websocket.WebSocket, message: list) -> None:
+        if message[0] == "UpdateInfo":
+            self.update_info(ws, message[1])
         if message[0] == "LeaveRoom":
             leave_room(ws)
         elif message[0] == "SelectCard":
@@ -92,6 +94,12 @@ class GameBackend(object):
         self.clients.remove(ws)
         GameBackend.backend.pop(ws)
         self.game.remove_player(ws_to_player[ws])
+
+    def update_info(self, ws: websocket.WebSocket, data: dict) -> None:
+        player = ws_to_player[ws]
+        player.name = data.get('Name', player.name)
+        player.picture = data.get('Avi', player.picture)
+        self.update_all()
 
     def send(self, ws: websocket.WebSocket, data: str) -> None:
         """Send given data to the registered client.
@@ -242,7 +250,7 @@ def join_room(ws, game):
     game_backend.register(ws)
     data = json.dumps([
         "RoomUpdate",
-        str(game.id),
+        # str(game.id),
         game.make_current_game_state(ws_to_player[ws])
     ])
     game_backend.send(ws, data)
@@ -265,9 +273,7 @@ def route_message(ws: websocket.WebSocket, message: Union[str, list, Any]):
     if isinstance(message, str):
         message = [message]
 
-    if message[0] == "CreateRoom":
-        Lobby.process_message(ws, message)
-    elif message[0] == "JoinRoom":
+    if message[0] == "JoinRoom":
         Lobby.process_message(ws, message)
     else:
         game_backend = game_by_ws(ws)
@@ -275,7 +281,7 @@ def route_message(ws: websocket.WebSocket, message: Union[str, list, Any]):
             logger.warning(f"Unexpected message from client: {message}")
             return
 
-        if message[0] in ["LeaveRoom", "SelectCard", "TellStory", "EndTurn"]:
+        if message[0] in ["UpdateInfo", "LeaveRoom", "SelectCard", "TellStory", "EndTurn"]:
             game_backend.process_message(ws, message)
         else:
             logger.warning(f"Unexpected message from client: {message}")

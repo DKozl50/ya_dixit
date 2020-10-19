@@ -174,7 +174,7 @@ class TestGame(unittest.TestCase):
         play_until_phase(self.game, Game.GamePhase.INTERLUDE)
 
     def test_full_game(self):
-        for _ in range(100):
+        for _ in range(500000):
             self.game = make_game()
             play_until_phase(
                 self.game,

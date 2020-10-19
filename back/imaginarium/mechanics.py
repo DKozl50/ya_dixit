@@ -389,8 +389,8 @@ class Game:
     def get_cur_player(self) -> Player:
         return self.current_player
 
-    def get_hand(self, target: Player) -> List[str]:
-        return [str(card.id) for card in self.hands[target]]
+    def get_hand(self, target: Player) -> List[dict]:
+        return [{'ID': str(card.id), 'Owner': None, 'Voters': []} for card in self.hands[target]]
 
     def _fix_packs(self) -> None:
         """Fixes packs choice.
@@ -414,7 +414,7 @@ class Game:
     def make_example_player(self, player):
         to_return = dict()
         to_return["Name"] = player.name
-        to_return["Avi"] = "000c57001b42e5c69b37a8d1b7e88b76.jpg"
+        to_return["Avi"] = "temp.jpg"  # TODO picture
         if self.current_player == player:
             to_return["Role"] = "Storyteller"
         else:
@@ -450,16 +450,13 @@ class Game:
         table = dict()
         cards_on_table = []
         for card, other_player in self.current_table.items():
-            request = [card.id]
+            request = {"ID": card.id, "Owner": None, "Voters": []}
             if (self.state == self.GamePhase.GUESSING and other_player ==
                     player) or self.state == self.GamePhase.INTERLUDE:
-                request.append({
-                    "Owner": self.make_example_player(player),
-                    "Voters": self.get_votes(card)
-                })
-            else:
-                request.append(None)
+                request["Owner"] = self.make_example_player(player)
+                request["Voters"] = self.get_votes(card)
             cards_on_table.append(request)
+
         table["Cards"] = cards_on_table
         table["Story"] = self.current_association
         to_return["Table"] = table
@@ -476,7 +473,7 @@ class Game:
         if self.state == self.GamePhase.VICTORY:
             to_return["Phase"] = "Victory"
         to_return['ID'] = str(self.id)
-        print(to_return)
+        # print(to_return)
         return to_return
 
     # TODO add Database
