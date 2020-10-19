@@ -241,7 +241,7 @@ def join_room(ws, game):
     GameBackend.backend[ws] = game_backend
     game_backend.register(ws)
     data = json.dumps([
-        "RoomConnect",
+        "RoomUpdate",
         str(game.id),
         game.make_current_game_state(ws_to_player[ws])
     ])

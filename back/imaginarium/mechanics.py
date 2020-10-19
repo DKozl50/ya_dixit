@@ -414,6 +414,7 @@ class Game:
     def make_example_player(self, player):
         to_return = dict()
         to_return["Name"] = player.name
+        to_return["Avi"] = "000c57001b42e5c69b37a8d1b7e88b76.jpg"
         if self.current_player == player:
             to_return["Role"] = "Storyteller"
         else:
@@ -474,6 +475,7 @@ class Game:
             to_return["Phase"] = "Guessing"
         if self.state == self.GamePhase.VICTORY:
             to_return["Phase"] = "Victory"
+        to_return['ID'] = str(self.id)
         print(to_return)
         return to_return
 
