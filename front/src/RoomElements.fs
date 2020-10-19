@@ -224,17 +224,20 @@ let settingsHeader setIsOpen =
                                          prop.onClick
                                          ^ fun _ -> setIsOpen false ] ]
 
-let settignsFooter updatedInfo setUpdatedInfo =
+let settignsFooter updatedInfo setUpdatedInfo setIsOpen =
     Bulma.modalCardFoot [ Bulma.button.button [ color.isSuccess
                                                 prop.text "ОК"
                                                 prop.onClick
                                                 ^ fun _ ->
                                                     globalDispatch
                                                     ^ Msg.InternalMsg
-                                                    ^ InternalMessage.UpdateStorage updatedInfo ]
+                                                    ^ InternalMessage.UpdateStorage updatedInfo
+                                                    setIsOpen false ]
                           Bulma.button.button [ prop.text "Отмена"
                                                 prop.onClick
-                                                ^ fun _ -> setUpdatedInfo { Avi = None; Name = None } ] ]
+                                                ^ fun _ ->
+                                                    setUpdatedInfo { Avi = None; Name = None }
+                                                    setIsOpen false ] ]
 
 let aviUploadField updatedInfo setUpdatedInfo =
     Bulma.field.div [ Bulma.label "Загрузите файл авы"
@@ -277,7 +280,7 @@ let settings p updatedInfo setUpdatedInfo setIsOpen =
                                   Bulma.modalCard [ settingsHeader setIsOpen
                                                     settingsBody updatedInfo setUpdatedInfo
                                                     ^ applyUpdatedInfo p updatedInfo
-                                                    settignsFooter updatedInfo setUpdatedInfo ] ] ]
+                                                    settignsFooter updatedInfo setUpdatedInfo setIsOpen ] ] ]
 
 let settingsButton setIsOpen =
     Bulma.card [ prop.className "settings-button"
